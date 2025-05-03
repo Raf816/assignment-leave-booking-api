@@ -5,4 +5,5 @@ export class User {
     toString(): string {
         return `${this.firstName} ${this.surname}`;
     }
-}              
+}
+//
