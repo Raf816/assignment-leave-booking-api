@@ -8,6 +8,8 @@ export class Server {
     constructor(private readonly myRouter: MyRouter,
                 private readonly port: number) {
         this.app = express();
+        // this.myRouter = myRouter;
+        // this.port = port;
     
         this.initialiseMiddlewares();
         this.initialiseRoutes();
