@@ -1,5 +1,5 @@
 import express, { Application, Request, Response } from "express";
-import { MyRouter } from "./routes/MyRouter";
+import { MyRouter } from "./caseStudyAPI/routes/MyRouter";
 import { StatusCodes } from "http-status-codes";
 
 export class Server {

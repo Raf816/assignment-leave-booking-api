@@ -1,4 +1,4 @@
-import { MyRouter } from "./routes/MyRouter";
+import { MyRouter } from "./caseStudyAPI/routes/MyRouter";
 import { Router } from "express";
 import { Server } from "./Server";
 
