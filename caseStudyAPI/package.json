@@ -1,5 +1,5 @@
 {
-   "name": "caseStudyAPI",
+   "name": "casestudyapi",
    "version": "0.0.1",
    "description": "Awesome project developed with TypeORM.",
    "type": "commonjs",
@@ -15,6 +15,7 @@
    },
    "scripts": {
       "start": "ts-node src/index.ts",
+      "dev": "cross-env NODE_ENV=development nodemon src/index.ts",
       "typeorm": "typeorm-ts-node-commonjs"
    }
 }
