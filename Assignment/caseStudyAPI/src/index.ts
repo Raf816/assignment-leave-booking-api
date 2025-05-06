@@ -1,60 +1,22 @@
-import express, { Request, Response } from "express";
-import { AppDataSource } from "./data-source";
-import { Repository } from "typeorm";
-import { Role } from "./entity/Role";
-import { StatusCodes } from 'http-status-codes';
+import { Server } from "./Server";
+import { Router } from "express";
+import { AppDataSource } from "./data-source"; 
+import { RoleRouter } from "./routes/RoleRouter";
+import { RoleController } from "./controllers/RoleController";
 
-const app = express();
-const port = process.env.SERVER_PORT;
-const appDataSource = AppDataSource;
-let roleRepository: Repository<Role> = AppDataSource.getRepository(Role);
-
-// Initialise Data Source
-try {
-    appDataSource.initialize();
-    console.log("Data Source initialized");
-} catch (error) {
-    console.log("Error during initialization:", error);
-    throw error;
+//Initialise the port
+const DEFAULT_PORT = 8900
+const port = process.env.SERVER_PORT || DEFAULT_PORT;
+if (!process.env.SERVER_PORT) {
+    console.log("PORT environment variable is not set, defaulting to " + DEFAULT_PORT);
 }
 
-// Get all roles
-app.get("/api/roles", async (req: Request, res: Response): Promise<void> => {
-    try {
-        const roles = await roleRepository.find();
+// Initialise the data source
+const appDataSource = AppDataSource;
 
-        if (roles.length === 0) {
-            res.status(StatusCodes.NO_CONTENT);
-            return;
-        }
+// Initialise routers
+const roleRouter = new RoleRouter(Router(), new RoleController());
 
-        res.send(roles);
-    } catch (error) 
-    {
-        res.status(StatusCodes.INTERNAL_SERVER_ERROR).send("Failed to retrieve roles");
-    }
-});
-
-// Get role by ID
-app.get("/api/roles/:id", async (req: Request, res: Response): Promise<void> => {
-    const id = parseInt(req.params.id);
-    if (isNaN(id)) {
-        res.status(StatusCodes.BAD_REQUEST).send("Invalid ID format");
-        return;
-    }
-    try {
-        const role = await roleRepository.findOne({ where: { id: id } });
-        if (!role) {
-            res.status(StatusCodes.NOT_FOUND).send(`Role not found with ID: ${id}`);
-            return;
-        }
-        res.status(StatusCodes.OK).send(role);
-    } catch (error) {
-        res.status(StatusCodes.INTERNAL_SERVER_ERROR).send("Failed to retrieve role");
-    }
-});
-
-// Start server
-app.listen(port, () => {
-    console.log(`Example app listening on port ${port}`);
-});
+// Instantiate/start the server
+const server = new Server(port, roleRouter, appDataSource);
+server.start();
