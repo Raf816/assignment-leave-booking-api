@@ -5,7 +5,7 @@ import { RoleRouter } from "./routes/RoleRouter";
 import { RoleController } from "./controllers/RoleController";
 
 //Initialise the port
-const DEFAULT_PORT = 8900
+const DEFAULT_PORT = 9900
 const port = process.env.SERVER_PORT || DEFAULT_PORT;
 if (!process.env.SERVER_PORT) {
     console.log("PORT environment variable is not set, defaulting to " + DEFAULT_PORT);

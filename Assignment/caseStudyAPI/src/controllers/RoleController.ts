@@ -3,7 +3,7 @@ import { AppDataSource } from '../data-source';
 import { Role } from '../entity/Role';
 import { Repository } from "typeorm";
 import { StatusCodes } from 'http-status-codes';
-import { Response Handler} from 
+import { ResponseHandler } from '../helper/ResponseHandler';
 import { validate } from "class-validator";
 
 export class RoleController {
