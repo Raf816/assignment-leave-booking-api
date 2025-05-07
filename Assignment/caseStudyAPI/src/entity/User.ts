@@ -1,18 +1,21 @@
-import { Entity, PrimaryGeneratedColumn, Column } from "typeorm"
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne} from "typeorm"
+import { IsEmail, IsString, MinLength } from 'class-validator';
+import { Role } from "./Role"; 
 
-@Entity()
+@Entity({ name: "user" })
 export class User {
-
     @PrimaryGeneratedColumn()
     id: number
 
-    @Column()
-    firstName: string
+    @Column() 
+    @IsString()
+    @MinLength(10, { message: 'Password must be at least 10 characters long' })
+    password: string
 
-    @Column()
-    lastName: string
+    @Column({ unique: true }) 
+    @IsEmail({}, { message: 'Must be a valid email address' })
+    email: string
 
-    @Column()
-    age: number
-
+    @ManyToOne(() => Role,  { nullable: false, eager: true })
+    role: Role; 
 }
