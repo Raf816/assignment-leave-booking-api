@@ -3,6 +3,7 @@ import { AppDataSource } from '../data-source';
 import { User } from '../entity/User';
 import { Repository } from "typeorm";
 import { ResponseHandler } from '../helper/ResponseHandler';
+import { instanceToPlain } from "class-transformer";
 import { StatusCodes } from 'http-status-codes';
 import { validate } from "class-validator";
 
@@ -17,17 +18,17 @@ export class UserController {
   public getAll = async (req: Request, res: Response): Promise<void> => {
     try {
       const users = await this.userRepository.find({
-        relations: ["role"], 
+        relations: ["role"], //include all role fields in response
       });
 
       if (users.length === 0) {
-        ResponseHandler.sendSuccessResponse(res, StatusCodes.NO_CONTENT); 
+        ResponseHandler.sendSuccessResponse(res, [], StatusCodes.NO_CONTENT); 
       }
 
       ResponseHandler.sendSuccessResponse(res, users);
 
     } catch (error) {
-      ResponseHandler.sendErrorResponse(res, StatusCodes.INTERNAL_SERVER_ERROR, `Failed to retrieve users: ${error.message}`);
+      ResponseHandler.sendErrorResponse(res, StatusCodes.INTERNAL_SERVER_ERROR,`Failed to retrieve users: ${error.message}`);
     }
   };
 
@@ -41,17 +42,17 @@ export class UserController {
     }
 
     try {
-      const user = await this.userRepository.findOne({ where: { email: email },  
+      const user = await this.userRepository.find({ where: { email: email },  
                                                     relations: ["role"]});
-      if (!user) {
-        ResponseHandler.sendErrorResponse(res, StatusCodes.NOT_FOUND, `User not found with email: ${email}`);
+      if (user.length === 0) {
+        ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, `${email} not found`);
         return;
       }
 
       ResponseHandler.sendSuccessResponse(res, user);
 
     } catch (error) {
-      ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, `Unable to find user with the email: {$email}`);
+      ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST,  `Unable to find user with the email: {$email}`);
     }
   };
 
@@ -72,7 +73,7 @@ export class UserController {
       }
 
       ResponseHandler.sendSuccessResponse(res,user);
-    
+     
     } catch (error) {
       ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, `Error fetching user: {$error.message}`);
     }
@@ -91,9 +92,10 @@ export class UserController {
          throw new Error (errors.map(err => Object.values(err.constraints || {})).join(", "));
       }
 
-      user = await this.userRepository.save(user); 
+      user = await this.userRepository.save(user); // Save and return the created object
       
-      ResponseHandler.sendSuccessResponse(res, user, StatusCodes.CREATED);
+      ResponseHandler.sendSuccessResponse(res, instanceToPlain(user), StatusCodes.CREATED);
+      //instanceToPlain otherwise sensitive fields will be exposed
 
     } catch (error: any) { 
       ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, error.message);
@@ -103,7 +105,7 @@ export class UserController {
   // Delete a user
   public delete = async (req: Request, res: Response): Promise<void> => {
     const id = req.params.id;
-    console.log(id);
+
     try {
       if (!id) {
         throw new Error("No ID provided");
@@ -122,7 +124,7 @@ export class UserController {
     }
   };
 
-  // Update details
+  // Update details (not password or id)
   public update = async (req: Request, res: Response): Promise<void> => {
       const id = req.body.id;
      try{
@@ -130,7 +132,8 @@ export class UserController {
         throw new Error("id not found");
       }
       
-      let user = await this.userRepository.findOne({ where: id });
+      let user = await this.userRepository.findOneBy({ id });
+
       if (!user) {
         throw new Error("User not found");
       }
@@ -140,7 +143,7 @@ export class UserController {
       user.role = req.body.roleId;
 
       const errors = await validate(user);
-      if (errors.length > 0) {  //Collate a string of all decorator error messages
+      if (errors.length > 0) { //Collate a string of all decorator error messages
          throw new Error (errors.map(err => Object.values(err.constraints || {})).join(", "));
       }
 
