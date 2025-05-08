@@ -95,7 +95,7 @@ export class UserController {
       user = await this.userRepository.save(user); // Save and return the created object
       
       ResponseHandler.sendSuccessResponse(res, instanceToPlain(user), StatusCodes.CREATED);
-      //remember to include instanceToPlain otherwise sensitive fields will be exposed
+      //instanceToPlain otherwise sensitive fields will be exposed
 
     } catch (error: any) { 
       ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, error.message);
