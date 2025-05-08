@@ -4,7 +4,6 @@ import { RoleRouter } from './RoleRouter';
 import { RoleController } from '../controllers/RoleController';
 import { StatusCodes } from 'http-status-codes';
 
-//https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status#successful_responses
 const mockRoleController = {
     delete: jest.fn((req, res) => res.status(StatusCodes.OK).json({ id: req.params.id })),
     getAll: jest.fn((req, res) => res.status(StatusCodes.OK).json([])),
