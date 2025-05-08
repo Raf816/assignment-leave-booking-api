@@ -1,5 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column } from "typeorm";
-import { IsNotEmpty, MaxLength } from 'class-validator';
+import { IsNotEmpty, Matches, MaxLength } from 'class-validator';
 
 @Entity({ name: "role" })
 export class Role {
@@ -8,6 +8,7 @@ export class Role {
 
     @Column()
     @IsNotEmpty({ message: 'Name is required' })
+    @Matches(/\S/, { message: 'Name cannot be empty or whitespace' })
     @MaxLength(30, { message: 'Name must be 30 characters or less' })
     name: string;
 }
