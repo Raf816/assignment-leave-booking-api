@@ -124,7 +124,7 @@ export class UserController {
       ResponseHandler.sendSuccessResponse(res, 
                                           instanceToPlain(user), 
                                           StatusCodes.CREATED);
-      //remember to include instanceToPlain otherwise sensitive fields will be exposed
+      //include instanceToPlain otherwise sensitive fields will be exposed
 
     } catch (error: any) { 
       ResponseHandler.sendErrorResponse(res, 
