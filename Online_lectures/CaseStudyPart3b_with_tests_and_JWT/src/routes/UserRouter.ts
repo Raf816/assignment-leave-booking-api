@@ -1,4 +1,4 @@
-import { Router } from "express";  
+import { Router } from "express";  // Correctly import Router
 import { UserController } from '../controllers/UserController';
 
 export class UserRouter {
