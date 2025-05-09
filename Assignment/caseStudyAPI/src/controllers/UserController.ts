@@ -176,6 +176,7 @@ export class UserController {
       // Update specific fields
       user.email = req.body.email;
       user.role = req.body.roleId;
+      user.password = req.body.password; //allows for password to be updated  - as before password would not pass validation due to it being undefined
 
       const errors = await validate(user);
       if (errors.length > 0) { //Collate a string of all decorator error messages
