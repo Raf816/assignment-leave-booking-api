@@ -164,6 +164,4 @@ describe('UserController', () => {
                                                                     StatusCodes.BAD_REQUEST, 
                                                                     UserController.ERROR_NO_USER_ID_PROVIDED);
     });
-
-//add additional update tests
 });
