@@ -1,8 +1,14 @@
 import { Router } from "express";  
-import { RoleController } from '../controllers/RoleController';
-export class RoleRouter {
+import { IRouter } from "./IRouter";
+import { IEntityController } from "../controllers/IEntityController";
+
+export class RoleRouter implements IRouter{
+    public routeName = "roles";
+    public basePath = "/api/roles";
+    public authenticate = true;
+
     constructor(private router: Router, 
-                private roleController: RoleController) {
+                private roleController: IEntityController) {
         this.addRoutes(); 
     }
 
@@ -11,10 +17,10 @@ export class RoleRouter {
     } 
 
     private addRoutes() {
-        this.router.delete('/:id', this.roleController.delete); 
-        this.router.get('/', this.roleController.getAll);  
-        this.router.get('/:id', this.roleController.getById);
+        this.router.get('/', this.roleController.getAll); 
+        this.router.get('/:id', this.roleController.getById); 
+        this.router.delete('/:id',this.roleController.delete);
         this.router.post('/', this.roleController.create);  
         this.router.patch('/', this.roleController.update);
-    }
+    }    
 }
