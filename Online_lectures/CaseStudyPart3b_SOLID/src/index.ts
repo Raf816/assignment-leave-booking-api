@@ -1,5 +1,6 @@
 import { Server } from "./Server";
 import { Router } from "express";
+import { DataSource } from "typeorm";
 import { AppDataSource } from "./data-source"; 
 import { LoginRouter } from "./routes/LoginRouter";
 import { RoleRouter } from "./routes/RoleRouter";
@@ -15,14 +16,16 @@ if (!process.env.SERVER_PORT) {
     console.log("PORT environment variable is not set, defaulting to " + DEFAULT_PORT);
 }
 
-// Initialise the data source
-const appDataSource = AppDataSource;
+//Initialise the data source
+const appDataSource: DataSource = AppDataSource;
 
-// Initialise routers
-const loginRouter = new LoginRouter(Router(), new LoginController())
-const roleRouter = new RoleRouter(Router(), new RoleController());
-const userRouter = new UserRouter(Router(), new UserController());
+//Initialise routers
+const routers = [
+    new LoginRouter(Router(), new LoginController()),
+    new RoleRouter(Router(), new RoleController()),
+    new UserRouter(Router(), new UserController())
+];
 
-// Instantiate/start the server
-const server = new Server(port, loginRouter, roleRouter, userRouter, appDataSource);
+//Instantiate/start the server
+const server = new Server(port, routers, appDataSource);
 server.start();
