@@ -36,4 +36,22 @@ export class User {
         this.password = hashedPassword;
         this.salt = salt;
     }
+
+    @Column()
+    @IsNotEmpty({ message: 'First name is required' })
+    @IsString()
+    firstname: string;
+
+    @Column()
+    @IsNotEmpty({ message: 'Surname is required' })
+    @IsString()
+    surname: string;
+
+    @Column({ default: 25 })
+    annualLeaveBalance: number;
+
+    @Column({ nullable: true })
+    @IsString()
+    department: string;
+
 }
