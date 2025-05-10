@@ -1,10 +1,15 @@
 import { Router } from "express";  
-import { LoginController } from "../controllers/LoginController";
+import { ILoginController } from "../controllers/ILoginController";
+import { IRouter } from "./IRouter";
 
-export class LoginRouter {
+export class LoginRouter implements IRouter {
+    public routeName = "login";
+    public basePath = "/api/login";
+    public authenticate = false;
+
     constructor(private router: Router, 
-            private loginController: LoginController) {
-        this.addRoutes(); 
+        private loginController: ILoginController) {
+            this.addRoutes(); 
     }
 
     public getRouter(): Router {

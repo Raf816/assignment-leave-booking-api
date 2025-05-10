@@ -103,7 +103,7 @@ describe("User Entity tests", () => {
     });
 
     it("A new user with a duplicate email address cannot be inserted/saved", async () => { 
-        mockUserRepository.save.mockImplementationOnce( //first call to save will succeeed
+        mockUserRepository.save.mockImplementationOnce(
             (user: User) => Promise.resolve(user)
         );
 

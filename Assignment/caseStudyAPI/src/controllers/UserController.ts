@@ -6,8 +6,10 @@ import { ResponseHandler } from '../helper/ResponseHandler';
 import { instanceToPlain } from "class-transformer";
 import { StatusCodes } from 'http-status-codes';
 import { validate } from "class-validator";
+import { IEntityController} from './IEntityController';
+import { AppError } from '../helper/AppError';
 
-export class UserController {
+export class UserController implements IEntityController{
   public static readonly ERROR_NO_USER_ID_PROVIDED = "No ID provided";
   public static readonly ERROR_INVALID_USER_ID_FORMAT = "Invalid ID format";
   public static readonly ERROR_USER_NOT_FOUND = "User not found";
@@ -30,7 +32,7 @@ export class UserController {
 
   // Get all users
   public getAll = async (req: Request, res: Response): Promise<void> => {
-    try {
+    
       const users = await this.userRepository.find({
         relations: ["role"], 
       });
@@ -40,12 +42,6 @@ export class UserController {
       }
 
       ResponseHandler.sendSuccessResponse(res, users);
-
-    } catch (error) {
-      ResponseHandler.sendErrorResponse(res, 
-                                        StatusCodes.INTERNAL_SERVER_ERROR, 
-                                      `${UserController.ERROR_FAILED_TO_RETRIEVE_USERS}: ${error.message}`);
-    }
   };
 
   // Get user by email
@@ -59,23 +55,17 @@ export class UserController {
       return;
     }
 
-    try {
-      const user = await this.userRepository.find({ where: { email: email },  
-                                                    relations: ["role"]});
-      if (user.length === 0) {
-        ResponseHandler.sendErrorResponse(res, 
-                                          StatusCodes.BAD_REQUEST, 
-                                          `${email} not found`);
-        return;
-      }
 
-      ResponseHandler.sendSuccessResponse(res, user);
-
-    } catch (error) {
+    const user = await this.userRepository.find({ where: { email: email },  
+                                                  relations: ["role"]});
+    if (user.length === 0) {
       ResponseHandler.sendErrorResponse(res, 
-                                        StatusCodes.BAD_REQUEST,  
-                                        UserController.ERROR_UNABLE_TO_FIND_USER_EMAIL(email));
-      }
+                                        StatusCodes.BAD_REQUEST, 
+                                        `${email} not found`);
+      return;
+    }
+
+    ResponseHandler.sendSuccessResponse(res, user);
   };
 
   // Get user by ID
@@ -88,7 +78,7 @@ export class UserController {
       return;
     }
 
-    try {
+    
       const user = await this.userRepository.findOne({ where: { id: id },  
                                                       relations: ["role"] });
       if (!user) {
@@ -99,88 +89,68 @@ export class UserController {
       }
 
       ResponseHandler.sendSuccessResponse(res, user);
-     
-    } catch (error) {
-      ResponseHandler.sendErrorResponse(res, 
-                                        StatusCodes.BAD_REQUEST, 
-                                        UserController.ERROR_RETRIEVING_USER(error.message));
-    }
   };
 
   // Add a new user
   public create = async (req: Request, res: Response): Promise<void> => {
-    try {
       let user = new User();
-      user.password = req.body.password; //Will be salted and hashed in the entity
+      user.password = req.body.password;
       user.email = req.body.email;
       user.role = req.body.roleId;
 
       const errors = await validate(user);
       if (errors.length > 0) { //Collate a string of all decorator error messages
-         throw new Error (errors.map(err => Object.values(err.constraints || {})).join(", "));
+          throw new AppError (errors.map(err => Object.values(err.constraints || {})).join(", "));
       }
 
       user = await this.userRepository.save(user); // Save and return the created object
       ResponseHandler.sendSuccessResponse(res, 
                                           instanceToPlain(user), 
                                           StatusCodes.CREATED);
-      //include instanceToPlain otherwise sensitive fields will be exposed
-
-    } catch (error: any) { 
-      ResponseHandler.sendErrorResponse(res, 
-                                        StatusCodes.BAD_REQUEST, 
-                                        error.message);
-    }
+      //remember to include instanceToPlain otherwise sensitive fields will be exposed
   };
 
   // Delete a user
   public delete = async (req: Request, res: Response): Promise<void> => {
     const id = req.params.id;
 
-    try {
+   
       if (!id) {
-        throw new Error("No ID provided");
+        throw new AppError("No ID provided");
       }
 
       const result = await this.userRepository.delete(id);
 
       if (result.affected === 0) {
-        throw new Error("User with the provided ID not found");
+        throw new AppError("User with the provided ID not found");
       }
 
       ResponseHandler.sendSuccessResponse(res,
                                           "User deleted", 
                                           StatusCodes.OK);
-  
-    } catch (error: any) {
-      ResponseHandler.sendErrorResponse(res, 
-                                        StatusCodes.NOT_FOUND, 
-                                        error.message);
-    }
   };
 
   // Update details (not password or id)
   public update = async (req: Request, res: Response): Promise<void> => {
       const id = req.body.id;
-     try{
+    
       if (!id) {
-        throw new Error(UserController.ERROR_NO_USER_ID_PROVIDED);
+        throw new AppError(UserController.ERROR_NO_USER_ID_PROVIDED);
       }
       
       let user = await this.userRepository.findOneBy({ id });
 
       if (!user) {
-        throw new Error(UserController.ERROR_USER_NOT_FOUND);
+        throw new AppError(UserController.ERROR_USER_NOT_FOUND);
       }
 
       // Update specific fields
       user.email = req.body.email;
       user.role = req.body.roleId;
-      user.password = req.body.password; //allows for password to be updated  - as before password would not pass validation due to it being undefined
 
       const errors = await validate(user);
       if (errors.length > 0) { //Collate a string of all decorator error messages
-         throw new Error (errors.map(err => Object.values(err.constraints || {})).join(", "));
+         throw new AppError (errors.map(err => Object.values(err.constraints || {})).join(", "));
       }
 
       user = await this.userRepository.save(user);
@@ -188,11 +158,5 @@ export class UserController {
       ResponseHandler.sendSuccessResponse(res, 
                                           user, 
                                           StatusCodes.OK);
-
-    } catch (error: any) {
-      ResponseHandler.sendErrorResponse(res, 
-                                        StatusCodes.BAD_REQUEST, 
-                                        error.message);
-    }
   };
 }
