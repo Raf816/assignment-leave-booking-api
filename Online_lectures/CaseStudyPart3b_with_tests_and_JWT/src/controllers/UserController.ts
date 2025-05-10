@@ -111,20 +111,20 @@ export class UserController {
   public create = async (req: Request, res: Response): Promise<void> => {
     try {
       let user = new User();
-      user.password = req.body.password; //Will be salted and hashed in the entity
+      user.password = req.body.password;
       user.email = req.body.email;
       user.role = req.body.roleId;
 
       const errors = await validate(user);
       if (errors.length > 0) { //Collate a string of all decorator error messages
-         throw new Error (errors.map(err => Object.values(err.constraints || {})).join(", "));
+          throw new Error (errors.map(err => Object.values(err.constraints || {})).join(", "));
       }
 
       user = await this.userRepository.save(user); // Save and return the created object
       ResponseHandler.sendSuccessResponse(res, 
                                           instanceToPlain(user), 
                                           StatusCodes.CREATED);
-      //include instanceToPlain otherwise sensitive fields will be exposed
+      //remember to include instanceToPlain otherwise sensitive fields will be exposed
 
     } catch (error: any) { 
       ResponseHandler.sendErrorResponse(res, 
@@ -176,7 +176,6 @@ export class UserController {
       // Update specific fields
       user.email = req.body.email;
       user.role = req.body.roleId;
-      user.password = req.body.password; //allows for password to be updated  - as before password would not pass validation due to it being undefined
 
       const errors = await validate(user);
       if (errors.length > 0) { //Collate a string of all decorator error messages

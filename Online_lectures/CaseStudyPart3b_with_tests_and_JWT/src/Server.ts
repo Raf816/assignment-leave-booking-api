@@ -62,9 +62,9 @@ export class Server {
 
     private initialiseRoutes() {
         this.app.use("/api/login", 
-            this.loginLimiter, 
-            this.logRouteAccess("Login route"), 
-            this.loginRouter.getRouter());
+                        this.loginLimiter, 
+                        this.logRouteAccess("Login route"), 
+                        this.loginRouter.getRouter());
 
         this.app.use("/api/roles", 
             this.authenticateToken,
