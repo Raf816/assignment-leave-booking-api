@@ -147,6 +147,7 @@ export class UserController implements IEntityController{
       // Update specific fields
       user.email = req.body.email;
       user.role = req.body.roleId;
+      user.password = req.body.password;
 
       const errors = await validate(user);
       if (errors.length > 0) { //Collate a string of all decorator error messages
