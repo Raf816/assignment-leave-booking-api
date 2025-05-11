@@ -24,15 +24,16 @@ export class ResponseHandler {
     }
 
     public static sendSuccessResponse(
-        res: Response, 
+        res: Response,
         data: any = {},
-        statusCode: number = StatusCodes.OK //fallback value
-        // Metadata can be added as optional
+        statusCode: number = StatusCodes.OK,
+        message?: string
     ): Response {
-        const successResponse = {
-            data: data,
-            // Include metadata here if needed
+        const response = {
+            ...(message && { message }),
+            data
         };
-        return res.status(statusCode).send(successResponse);
+        return res.status(statusCode).send(response);
     }
+    
 }

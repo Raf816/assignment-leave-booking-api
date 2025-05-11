@@ -33,6 +33,8 @@ export enum LeaveStatus {
       enum: LeaveStatus,
       default: LeaveStatus.PENDING,
     })
+
+    @IsEnum(LeaveStatus, { message: "Status must be Pending, Approved, Rejected or Cancelled" })
     
     @IsEnum(LeaveStatus)
     status: LeaveStatus;
