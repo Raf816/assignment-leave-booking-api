@@ -40,12 +40,12 @@ export class User {
     @Column()
     @IsNotEmpty({ message: 'First name is required' })
     @IsString()
-    firstname: string;
+    firstName: string;
 
     @Column()
     @IsNotEmpty({ message: 'Surname is required' })
     @IsString()
-    surname: string;
+    lastName: string;
 
     @Column({ default: 25 })
     annualLeaveBalance: number;
