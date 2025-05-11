@@ -8,6 +8,8 @@ import { UserRouter } from "./routes/UserRouter";
 import { RoleController } from "./controllers/RoleController";
 import { UserController } from "./controllers/UserController";
 import { LoginController } from "./controllers/LoginController";
+import { LeaveRequestRouter } from "./routes/LeaveRequestRouter";
+import { LeaveRequestController } from "./controllers/LeaveRequestController";
 
 //Initialise the port
 const DEFAULT_PORT = 9900
@@ -23,7 +25,8 @@ const appDataSource: DataSource = AppDataSource;
 const routers = [
     new LoginRouter(Router(), new LoginController()),
     new RoleRouter(Router(), new RoleController()),
-    new UserRouter(Router(), new UserController())
+    new UserRouter(Router(), new UserController()),
+    new LeaveRequestRouter(Router(), new LeaveRequestController())
 ];
 
 //Instantiate/start the server
