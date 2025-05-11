@@ -3,6 +3,7 @@ import { DataSource } from "typeorm";
 import * as dotenv from "dotenv";
 import { User } from "./entity/User";
 import { Role } from "./entity/Role";
+import { LeaveRequest } from "./entity/LeaveRequest";
 dotenv.config({ path: `.env.${process.env.NODE_ENV || "development"}` });
 
 export const AppDataSource = new DataSource({
@@ -12,7 +13,7 @@ export const AppDataSource = new DataSource({
     username: process.env.DB_USERNAME,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_DATABASE,
-    synchronize: true,
+    synchronize: false,
     logging: false,
-    entities: [Role, User]
+    entities: [Role, User, LeaveRequest]
 });
