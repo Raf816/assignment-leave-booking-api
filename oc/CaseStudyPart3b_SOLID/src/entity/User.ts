@@ -1,5 +1,5 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, BeforeInsert, BeforeUpdate } from "typeorm"
-import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, BeforeInsert } from "typeorm"
+import { IsEmail, IsNotEmpty, IsString, MinLength } from 'class-validator';
 import { Role } from "./Role"; 
 import { Exclude } from "class-transformer";
 import { PasswordHandler } from '../helper/PasswordHandler';
@@ -28,7 +28,6 @@ export class User {
     role: Role; 
 
     @BeforeInsert()
-    @BeforeUpdate()
     hashPassword() {
         if (!this.password) {
             throw new Error("Password must be provided before inserting a user.");
@@ -37,32 +36,4 @@ export class User {
         this.password = hashedPassword;
         this.salt = salt;
     }
-
-    // @BeforeInsert()
-    // @BeforeUpdate()
-    // hashPassword() {
-    //     if (this.password && this.password.length > 0) {
-    //         const { hashedPassword, salt } = PasswordHandler.hashPassword(this.password); 
-    //         this.password = hashedPassword;
-    //         this.salt = salt;
-    //     }
-    // }
-
-    @Column()
-    @IsNotEmpty({ message: 'First name is required' })
-    @IsString()
-    firstName: string;
-
-    @Column()
-    @IsNotEmpty({ message: 'Surname is required' })
-    @IsString()
-    lastName: string;
-
-    @Column({ default: 25 })
-    annualLeaveBalance: number;
-
-    @Column({ nullable: true })
-    @IsString()
-    department: string;
-
 }

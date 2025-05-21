@@ -39,7 +39,6 @@ export class UserController implements IEntityController{
 
       if (users.length === 0) {
         ResponseHandler.sendSuccessResponse(res, [], StatusCodes.NO_CONTENT); 
-        return;
       }
 
       ResponseHandler.sendSuccessResponse(res, users);
@@ -61,7 +60,7 @@ export class UserController implements IEntityController{
                                                   relations: ["role"]});
     if (user.length === 0) {
       ResponseHandler.sendErrorResponse(res, 
-                                        StatusCodes.NOT_FOUND, 
+                                        StatusCodes.BAD_REQUEST, 
                                         `${email} not found`);
       return;
     }
@@ -84,7 +83,7 @@ export class UserController implements IEntityController{
                                                       relations: ["role"] });
       if (!user) {
         ResponseHandler.sendErrorResponse(res, 
-                                          StatusCodes.NOT_FOUND, 
+                                          StatusCodes.NO_CONTENT, 
                                           UserController.ERROR_USER_NOT_FOUND_WITH_ID(id));
         return;
       }
@@ -97,10 +96,7 @@ export class UserController implements IEntityController{
       let user = new User();
       user.password = req.body.password;
       user.email = req.body.email;
-      user.role = { id: req.body.roleId } as any;
-      user.firstName = req.body.firstName;
-      user.lastName = req.body.lastName;
-      user.department = req.body.department;  
+      user.role = req.body.roleId;
 
       const errors = await validate(user);
       if (errors.length > 0) { //Collate a string of all decorator error messages
@@ -150,10 +146,7 @@ export class UserController implements IEntityController{
 
       // Update specific fields
       user.email = req.body.email;
-      user.role = { id: req.body.roleId } as any;
-      user.firstName = req.body.firstName;
-      user.lastName = req.body.lastName;
-      user.department = req.body.department;
+      user.role = req.body.roleId;
 
       const errors = await validate(user);
       if (errors.length > 0) { //Collate a string of all decorator error messages
@@ -162,11 +155,8 @@ export class UserController implements IEntityController{
 
       user = await this.userRepository.save(user);
 
-      // ResponseHandler.sendSuccessResponse(res, 
-      //                                     user, 
-      //                                     StatusCodes.OK);
-
-      ResponseHandler.sendSuccessResponse(res, instanceToPlain(user), StatusCodes.OK);
-
+      ResponseHandler.sendSuccessResponse(res, 
+                                          user, 
+                                          StatusCodes.OK);
   };
 }
