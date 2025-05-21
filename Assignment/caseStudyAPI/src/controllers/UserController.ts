@@ -136,11 +136,11 @@ export class UserController implements IEntityController{
 
   // Update details (not password or id)
   public update = async (req: Request, res: Response): Promise<void> => {
-      const id = req.body.id;
-    
-      if (!id) {
-        throw new AppError(UserController.ERROR_NO_USER_ID_PROVIDED);
-      }
+    const id = req.params.id ? parseInt(req.params.id) : req.body.id;
+
+    if (!id || isNaN(id)) {
+      throw new AppError(UserController.ERROR_NO_USER_ID_PROVIDED);
+    }
       
       let user = await this.userRepository.findOneBy({ id });
 
