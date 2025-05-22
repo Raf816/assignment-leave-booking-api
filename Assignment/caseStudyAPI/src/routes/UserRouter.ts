@@ -23,6 +23,7 @@ export class UserRouter implements IRouter{
     this.router.get('/email/:emailAddress', this.userController.getByEmail); 
     this.router.get('/:id', this.userController.getById); 
     this.router.post('/', this.userController.create);  
-    this.router.patch('/:id?', this.userController.update);
+    this.router.patch('/', this.userController.update);
+    this.router.patch('/:id', this.userController.update);
   }
 }
