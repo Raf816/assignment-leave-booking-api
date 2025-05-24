@@ -24,5 +24,13 @@ export class LeaveRequestRouter implements IRouter {
       MiddlewareFactory.logRouteAccess(this.basePath),
       this.leaveRequestController.requestLeave
     );
+
+    this.router.get(
+      "/my-requests",
+      MiddlewareFactory.authenticateToken,
+      MiddlewareFactory.jwtRateLimitMiddleware(this.basePath),
+      MiddlewareFactory.logRouteAccess(this.basePath),
+      this.leaveRequestController.getMyRequests
+    );
   }
 }
