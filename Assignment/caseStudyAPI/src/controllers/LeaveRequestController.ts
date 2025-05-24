@@ -18,7 +18,6 @@ export class LeaveRequestController {
       
       const { startDate, endDate, leaveType, reason } = req.body;
 
-      // Step 1: Get user from token
       const emailFromToken = req.signedInUser?.email;
       if (!emailFromToken) {
         Logger.error("Missing email in signedInUser");
@@ -33,11 +32,9 @@ export class LeaveRequestController {
         return;
       }
 
-      // Step 2: Convert dates early for reuse
       const start = new Date(startDate);
       const end = new Date(endDate);
 
-      // Step 3: Build LeaveRequest entity
       const leave = new LeaveRequest();
       leave.user = user;
       leave.startDate = startDate;
@@ -46,7 +43,6 @@ export class LeaveRequestController {
       leave.leaveType = leaveType || "Annual Leave";
       leave.reason = reason;
 
-      // Step 4: Validate using decorators
       const validationErrors = await validate(leave);
       if (validationErrors.length > 0) {
         const firstError = Object.values(validationErrors[0].constraints || {})[0];
@@ -55,7 +51,6 @@ export class LeaveRequestController {
         return;
       }
 
-      // Step 5: Validate end > start
       if (end <= start) {
         Logger.warn("End date before or equal to start date");
         ResponseHandler.sendErrorResponse(
@@ -66,7 +61,6 @@ export class LeaveRequestController {
         return;
       }
 
-      // Step 6: Check overlapping requests
       const existingRequests = await leaveRepository.find({
         where: {
           user: { id: user.id },
@@ -91,7 +85,6 @@ export class LeaveRequestController {
         return;
       }
 
-      // Step 7: Check leave balance
       const totalRequestedDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
       if (totalRequestedDays > user.annualLeaveBalance) {
         Logger.warn(`Requested ${totalRequestedDays} days, but only ${user.annualLeaveBalance} available`);
@@ -99,12 +92,10 @@ export class LeaveRequestController {
         return;
       }
 
-      // Step 8: Save to DB
       const savedLeave = await leaveRepository.save(leave);
 
       Logger.info(`Leave request submitted by ${user.email} for ${totalRequestedDays} days`);
 
-      // Step 9: Respond with success
       ResponseHandler.sendSuccessResponse(
         res,
         {
@@ -120,6 +111,34 @@ export class LeaveRequestController {
         StatusCodes.INTERNAL_SERVER_ERROR,
         "An error occurred while processing the request"
       );
+    }
+  }
+
+  async getMyRequests(req: IAuthenticatedJWTRequest, res: Response): Promise<void> {
+    try {
+      const email = req.signedInUser?.email;
+
+      if (!email) {
+        Logger.error("Missing email from token.");
+        ResponseHandler.sendErrorResponse(res, StatusCodes.UNAUTHORIZED, "Unauthorized");
+        return;
+      }
+
+      const leaveRepo = AppDataSource.getRepository(LeaveRequest);
+
+      const myRequests = await leaveRepo.find({
+        where: {
+          user: { email }
+        },
+        order: {
+          createdAt: "DESC"
+        }
+      });
+
+      ResponseHandler.sendSuccessResponse(res, instanceToPlain(myRequests), StatusCodes.OK);
+    } catch (error) {
+      Logger.error("Error retrieving leave requests", error);
+      ResponseHandler.sendErrorResponse(res, StatusCodes.INTERNAL_SERVER_ERROR, "Failed to retrieve leave requests");
     }
   }
 }
