@@ -25,6 +25,16 @@ export class LeaveRequestRouter implements IRouter {
       this.leaveRequestController.requestLeave
     );
 
+    // Approve a leave request — admin/manager only
+    this.router.patch(
+      "/approve/:id",
+      MiddlewareFactory.authenticateToken,
+      MiddlewareFactory.requireRole(["admin", "manager"]),
+      MiddlewareFactory.jwtRateLimitMiddleware(this.basePath),
+      MiddlewareFactory.logRouteAccess(this.basePath),
+      this.leaveRequestController.approveLeave
+    );
+
     this.router.get(
       "/my-requests",
       MiddlewareFactory.authenticateToken,

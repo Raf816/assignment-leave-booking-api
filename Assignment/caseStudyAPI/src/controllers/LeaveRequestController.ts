@@ -141,4 +141,63 @@ export class LeaveRequestController {
       ResponseHandler.sendErrorResponse(res, StatusCodes.INTERNAL_SERVER_ERROR, "Failed to retrieve leave requests");
     }
   }
+
+  async approveLeave(req: IAuthenticatedJWTRequest, res: Response): Promise<void> {
+    try {
+      const leaveRepo = AppDataSource.getRepository(LeaveRequest);
+      const userRepo = AppDataSource.getRepository(User);
+      const leaveId = parseInt(req.params.id);
+  
+      if (isNaN(leaveId)) {
+        ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, "Invalid leave request ID");
+        return;
+      }
+  
+      const leave = await leaveRepo.findOne({
+        where: { id: leaveId },
+        relations: ["user"]
+      });
+  
+      if (!leave) {
+        ResponseHandler.sendErrorResponse(res, StatusCodes.NOT_FOUND, "Leave request not found");
+        return;
+      }
+  
+      if (leave.status !== LeaveStatus.PENDING) {
+        ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, `Cannot approve request with status: ${leave.status}`);
+        return;
+      }
+  
+      // Calculate total days
+      const start = new Date(leave.startDate);
+      const end = new Date(leave.endDate);
+      const totalDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  
+      const user = await userRepo.findOneBy({ id: leave.user.id });
+      if (!user) {
+        ResponseHandler.sendErrorResponse(res, StatusCodes.NOT_FOUND, "User not found for leave request");
+        return;
+      }
+  
+      if (user.annualLeaveBalance < totalDays) {
+        ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, "Insufficient leave balance to approve");
+        return;
+      }
+  
+      // Update leave + user
+      leave.status = LeaveStatus.APPROVED;
+      user.annualLeaveBalance -= totalDays;
+  
+      await userRepo.save(user);
+      const saved = await leaveRepo.save(leave);
+  
+      Logger.info(`Leave request ID ${leave.id} approved by ${req.signedInUser?.email}`);
+  
+      ResponseHandler.sendSuccessResponse(res, instanceToPlain(saved), StatusCodes.OK);
+  
+    } catch (error) {
+      Logger.error("Error approving leave request", error);
+      ResponseHandler.sendErrorResponse(res, StatusCodes.INTERNAL_SERVER_ERROR, "Failed to approve leave request");
+    }
+  }  
 }

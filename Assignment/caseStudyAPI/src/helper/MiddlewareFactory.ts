@@ -53,6 +53,22 @@ export class MiddlewareFactory {
         };
     }
 
+    static requireRole(roles: string[]): RequestHandler {
+        return (req: IAuthenticatedJWTRequest, res: Response, next: NextFunction): void => {
+          const role = req.signedInUser?.role?.name?.toLowerCase();
+      
+          if (!role || !roles.includes(role)) {
+            Logger.warn(`Access denied. Required: ${roles.join(" or ")}, found: ${role}`);
+            ResponseHandler.sendErrorResponse(res, StatusCodes.FORBIDDEN, "Access denied");
+            return; // ✅ This line solves the TypeScript error
+          }
+      
+          next();
+        };
+      }
+      
+      
+
     // Authenticate JWT and attach signedInUser to request
     static authenticateToken(req: IAuthenticatedJWTRequest, res: Response, next: NextFunction): void {
         const authHeader = req.headers.authorization;
