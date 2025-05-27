@@ -8,6 +8,7 @@ import { StatusCodes } from 'http-status-codes';
 import { validate } from "class-validator";
 import { IEntityController} from './IEntityController';
 import { AppError } from "../helper/AppError";
+import { PasswordHandler } from '../helper/PasswordHandler';
 
 export class UserController implements IEntityController{
   public static readonly ERROR_NO_USER_ID_PROVIDED = "No ID provided";
@@ -154,6 +155,13 @@ export class UserController implements IEntityController{
       user.firstName = req.body.firstName;
       user.lastName = req.body.lastName;
       user.department = req.body.department;
+
+      //If a password is given to update user details
+      if (req.body.password && req.body.password.trim().length > 0) {
+        const { hashedPassword, salt } = PasswordHandler.hashPassword(req.body.password);
+        user.password = hashedPassword
+        user.salt = salt;
+      }
 
       const errors = await validate(user);
       if (errors.length > 0) { //Collate a string of all decorator error messages

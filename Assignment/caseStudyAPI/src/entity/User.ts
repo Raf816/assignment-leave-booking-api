@@ -27,16 +27,16 @@ export class User {
     @IsNotEmpty({ message: 'Role is required' })
     role: Role; 
 
-    @BeforeInsert()
-    @BeforeUpdate()
-    hashPassword() {
-        if (!this.password) {
-            throw new Error("Password must be provided before inserting a user.");
-        }
-        const { hashedPassword, salt } = PasswordHandler.hashPassword(this.password); 
-        this.password = hashedPassword;
-        this.salt = salt;
-    }
+    // @BeforeInsert()
+    // @BeforeUpdate()
+    // hashPassword() {
+    //     if (!this.password) {
+    //         throw new Error("Password must be provided before inserting a user.");
+    //     }
+    //     const { hashedPassword, salt } = PasswordHandler.hashPassword(this.password); 
+    //     this.password = hashedPassword;
+    //     this.salt = salt;
+    // }
 
     // @BeforeInsert()
     // @BeforeUpdate()
@@ -47,6 +47,17 @@ export class User {
     //         this.salt = salt;
     //     }
     // }
+
+    @BeforeInsert()
+    hashPasswordBeforeInsert() {
+    if (!this.password) {
+        throw new Error("Password must be provided before inserting a user.");
+    }
+    const { hashedPassword, salt } = PasswordHandler.hashPassword(this.password); 
+    this.password = hashedPassword;
+    this.salt = salt;
+    }
+
 
     @Column()
     @IsNotEmpty({ message: 'First name is required' })
