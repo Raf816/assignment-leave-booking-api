@@ -199,5 +199,44 @@ export class LeaveRequestController {
       Logger.error("Error approving leave request", error);
       ResponseHandler.sendErrorResponse(res, StatusCodes.INTERNAL_SERVER_ERROR, "Failed to approve leave request");
     }
-  }  
+  }
+
+  async rejectLeave(req: IAuthenticatedJWTRequest, res: Response): Promise<void> {
+    try{
+      const leaveRepo = AppDataSource.getRepository(LeaveRequest);
+      const leaveId = parseInt(req.params.id);
+      const { reason } = req.body;
+
+      if (isNaN(leaveId)) {
+        ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, "Invalid Leave Request ID");
+        return;
+      }
+
+      const leave = await leaveRepo.findOne({
+        where: { id: leaveId },
+        relations: ["user"]
+      });
+
+      if (!leave) {
+        ResponseHandler.sendErrorResponse(res, StatusCodes.NOT_FOUND, "Leave Request not found");
+        return;
+      }
+
+      if (leave.status !== LeaveStatus.PENDING){
+        ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, `Cannot reject leave request with status: ${leave.status}`)
+      }
+
+      leave.status = LeaveStatus.REJECTED;
+      leave.reason = reason || "Leave request rejected";
+      
+      const saved = await leaveRepo.save(leave);
+
+      Logger.info(`Leave request ID ${leave.id} rejected by ${req.signedInUser?.email}`);
+      ResponseHandler.sendSuccessResponse(res, instanceToPlain(saved), StatusCodes.OK);
+
+    } catch (error) {
+      Logger.error("Error rejecting leave request", error);
+      ResponseHandler.sendErrorResponse(res, StatusCodes.INTERNAL_SERVER_ERROR, "Failed to reject the leave request");
+    }
+  }
 }

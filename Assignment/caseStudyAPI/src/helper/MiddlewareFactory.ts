@@ -59,8 +59,8 @@ export class MiddlewareFactory {
       
           if (!role || !roles.includes(role)) {
             Logger.warn(`Access denied. Required: ${roles.join(" or ")}, found: ${role}`);
-            ResponseHandler.sendErrorResponse(res, StatusCodes.FORBIDDEN, "Access denied");
-            return; // ✅ This line solves the TypeScript error
+            ResponseHandler.sendErrorResponse(res, StatusCodes.FORBIDDEN, "Access denied - You do not have the required permission to approve this leave request");
+            return;
           }
       
           next();

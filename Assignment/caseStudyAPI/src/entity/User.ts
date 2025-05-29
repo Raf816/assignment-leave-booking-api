@@ -48,7 +48,7 @@ export class User {
     //     }
     // }
 
-    @BeforeInsert()
+    @BeforeInsert() 
     hashPasswordBeforeInsert() {
     if (!this.password) {
         throw new Error("Password must be provided before inserting a user.");

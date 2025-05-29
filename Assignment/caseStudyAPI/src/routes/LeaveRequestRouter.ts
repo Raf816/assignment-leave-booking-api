@@ -8,7 +8,7 @@ export class LeaveRequestRouter implements IRouter {
   public basePath = "/api/leave-requests";
   public authenticate = true;
 
-  constructor(private router: Router, private leaveRequestController: LeaveRequestController) {
+  constructor(private router: Router,private leaveRequestController: LeaveRequestController) {
     this.addRoutes();
   }
 
@@ -17,6 +17,7 @@ export class LeaveRequestRouter implements IRouter {
   }
 
   private addRoutes() {
+    // STAFF: Submit a leave request
     this.router.post(
       "/",
       MiddlewareFactory.authenticateToken,
@@ -25,7 +26,16 @@ export class LeaveRequestRouter implements IRouter {
       this.leaveRequestController.requestLeave
     );
 
-    // Approve a leave request — admin/manager only
+    // STAFF: View their own leave requests
+    this.router.get(
+      "/my-requests",
+      MiddlewareFactory.authenticateToken,
+      MiddlewareFactory.jwtRateLimitMiddleware(this.basePath),
+      MiddlewareFactory.logRouteAccess(this.basePath),
+      this.leaveRequestController.getMyRequests
+    );
+
+    // MANAGER/ADMIN: Approve a leave request
     this.router.patch(
       "/approve/:id",
       MiddlewareFactory.authenticateToken,
@@ -35,12 +45,14 @@ export class LeaveRequestRouter implements IRouter {
       this.leaveRequestController.approveLeave
     );
 
-    this.router.get(
-      "/my-requests",
+    // MANAGER/ADMIN: Reject a leave request
+    this.router.patch(
+      "/reject/:id",
       MiddlewareFactory.authenticateToken,
+      MiddlewareFactory.requireRole(["admin", "manager"]),
       MiddlewareFactory.jwtRateLimitMiddleware(this.basePath),
       MiddlewareFactory.logRouteAccess(this.basePath),
-      this.leaveRequestController.getMyRequests
+      this.leaveRequestController.rejectLeave
     );
   }
 }
