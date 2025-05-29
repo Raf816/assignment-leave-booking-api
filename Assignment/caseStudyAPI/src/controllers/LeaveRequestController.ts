@@ -205,7 +205,7 @@ export class LeaveRequestController {
     try{
       const leaveRepo = AppDataSource.getRepository(LeaveRequest);
       const leaveId = parseInt(req.params.id);
-      const { reason } = req.body;
+      const { reason = "Leave request rejected" } = req.body || {}; //optional leave reason + default message
 
       if (isNaN(leaveId)) {
         ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, "Invalid Leave Request ID");
