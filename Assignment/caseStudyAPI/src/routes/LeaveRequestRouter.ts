@@ -54,5 +54,14 @@ export class LeaveRequestRouter implements IRouter {
       MiddlewareFactory.logRouteAccess(this.basePath),
       this.leaveRequestController.rejectLeave
     );
+
+    // STAFF/ADMIN: Cancel a leave request
+    this.router.patch(
+      "/cancel/:id",
+      MiddlewareFactory.authenticateToken,
+      MiddlewareFactory.jwtRateLimitMiddleware(this.basePath),
+      MiddlewareFactory.logRouteAccess(this.basePath),
+      this.leaveRequestController.cancelLeave
+    );
   }
 }
