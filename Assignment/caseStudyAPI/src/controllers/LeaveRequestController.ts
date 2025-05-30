@@ -21,7 +21,7 @@ export class LeaveRequestController {
       const emailFromToken = req.signedInUser?.email;
       if (!emailFromToken) {
         Logger.error("Missing email in signedInUser");
-        ResponseHandler.sendErrorResponse(res, StatusCodes.UNAUTHORIZED, "User not authorized");
+        ResponseHandler.sendErrorResponse(res, StatusCodes.UNAUTHORIZED, "User not authorised");
         return;
       }
 
@@ -120,7 +120,7 @@ export class LeaveRequestController {
 
       if (!email) {
         Logger.error("Missing email from token.");
-        ResponseHandler.sendErrorResponse(res, StatusCodes.UNAUTHORIZED, "Unauthorized");
+        ResponseHandler.sendErrorResponse(res, StatusCodes.UNAUTHORIZED, "Unauthorised");
         return;
       }
 
@@ -237,6 +237,72 @@ export class LeaveRequestController {
     } catch (error) {
       Logger.error("Error rejecting leave request", error);
       ResponseHandler.sendErrorResponse(res, StatusCodes.INTERNAL_SERVER_ERROR, "Failed to reject the leave request");
+    }
+  }
+  
+    async cancelLeave(req: IAuthenticatedJWTRequest, res: Response): Promise<void> {
+    try {
+      const leaveRepo = AppDataSource.getRepository(LeaveRequest);
+      const userRepo = AppDataSource.getRepository(User);
+      const leaveId = parseInt(req.params.id);
+
+      if (isNaN(leaveId)) {
+        ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, "Invalid leave request ID");
+        return;
+      }
+
+      const leave = await leaveRepo.findOne({
+        where: { id: leaveId },
+        relations: ["user"]
+      });
+
+      if (!leave) {
+        ResponseHandler.sendErrorResponse(res, StatusCodes.NOT_FOUND, "Leave request not found");
+        return;
+      }
+
+      const currentUserEmail = req.signedInUser?.email;
+      const currentUserRole = req.signedInUser?.role?.name?.toLowerCase();
+
+      const isAdmin = currentUserRole === "admin";
+      const isOwner = currentUserEmail === leave.user.email;
+
+      if (!isAdmin && !isOwner) {
+        Logger.warn(`Unauthorised cancel attempt by ${currentUserEmail} on request ${leaveId}`);
+        ResponseHandler.sendErrorResponse(res, StatusCodes.FORBIDDEN, "Not authorised to cancel this request");
+        return;
+      }
+
+      // If already cancelled/rejected, no point in cancelling again
+      if ([LeaveStatus.CANCELLED, LeaveStatus.REJECTED].includes(leave.status)) {
+        ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, `Cannot cancel request with status: ${leave.status}`);
+        return;
+      }
+
+      // If previously approved, restore balance
+      if (leave.status === LeaveStatus.APPROVED) {
+        const user = await userRepo.findOneBy({ id: leave.user.id });
+        if (!user) {
+          ResponseHandler.sendErrorResponse(res, StatusCodes.NOT_FOUND, "User not found for leave request");
+          return;
+        }
+
+        const start = new Date(leave.startDate);
+        const end = new Date(leave.endDate);
+        const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+        user.annualLeaveBalance += days;
+        await userRepo.save(user);
+      }
+
+      leave.status = LeaveStatus.CANCELLED;
+      const saved = await leaveRepo.save(leave);
+
+      Logger.info(`Leave request ID ${leave.id} cancelled by ${currentUserEmail}`);
+      ResponseHandler.sendSuccessResponse(res, instanceToPlain(saved), StatusCodes.OK);
+    } catch (error) {
+      Logger.error("Error cancelling leave request", error);
+      ResponseHandler.sendErrorResponse(res, StatusCodes.INTERNAL_SERVER_ERROR, "Failed to cancel leave request");
     }
   }
 }
