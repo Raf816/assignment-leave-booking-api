@@ -305,4 +305,49 @@ export class LeaveRequestController {
       ResponseHandler.sendErrorResponse(res, StatusCodes.INTERNAL_SERVER_ERROR, "Failed to cancel leave request");
     }
   }
+
+  async getRemainingLeave(req: IAuthenticatedJWTRequest, res: Response): Promise<void> {
+    try {
+      const userId = parseInt(req.params.userId);
+      const requester = req.signedInUser;
+  
+      if (!userId || isNaN(userId)) {
+        ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, "Invalid user ID");
+        return;
+      }
+  
+      const userRepo = AppDataSource.getRepository(User);
+      const user = await userRepo.findOne({
+        where: { id: userId },
+        relations: ["role"]
+      });
+  
+      if (!user) {
+        ResponseHandler.sendErrorResponse(res, StatusCodes.NOT_FOUND, "User not found");
+        return;
+      }
+  
+      const isAdmin = requester?.role?.name?.toLowerCase() === "admin";
+      const isSelf = requester?.email === user.email;
+  
+      if (!isAdmin && !isSelf) {
+        ResponseHandler.sendErrorResponse(res, StatusCodes.FORBIDDEN, "Access denied");
+        return;
+      }
+  
+      ResponseHandler.sendSuccessResponse(
+        res,
+        {
+          remainingDays: user.annualLeaveBalance,
+          fullName: `${user.firstName} ${user.lastName}`,
+          email: user.email
+        },
+        StatusCodes.OK,
+        `Remaining leave for ${user.firstName} ${user.lastName}`
+      );
+    } catch (error) {
+      Logger.error("Error getting remaining leave", error);
+      ResponseHandler.sendErrorResponse(res, StatusCodes.INTERNAL_SERVER_ERROR, "Failed to get remaining leave");
+    }
+  }
 }
