@@ -306,6 +306,48 @@ export class LeaveRequestController {
     }
   }
 
+  async getAllLeaveRequests(req: IAuthenticatedJWTRequest, res: Response): Promise<void> {
+    try {
+      const leaveRepo = AppDataSource.getRepository(LeaveRequest);
+  
+      const userId = req.query.userId ? parseInt(req.query.userId as string) : undefined;
+      const status = req.query.status as string | undefined;
+  
+      const whereClause: any = {};
+      if (userId) whereClause.user = { id: userId };
+      if (status) whereClause.status = status;
+  
+      const allRequests = await leaveRepo.find({
+        where: whereClause,
+        relations: ["user"],
+        order: { createdAt: "DESC" }
+      });
+  
+      const formatted = allRequests.map(lr => ({
+        id: lr.id,
+        leaveType: lr.leaveType,
+        startDate: lr.startDate,
+        endDate: lr.endDate,
+        status: lr.status,
+        reason: lr.reason,
+        createdAt: lr.createdAt,
+        updatedAt: lr.updatedAt,
+        user: {
+          id: lr.user.id,
+          email: lr.user.email,
+          firstName: lr.user.firstName,
+          lastName: lr.user.lastName
+        }
+      }));
+  
+      Logger.info(`Filtered leave requests retrieved by ${req.signedInUser?.email}`);
+      ResponseHandler.sendSuccessResponse(res, formatted, StatusCodes.OK);
+    } catch (error) {
+      Logger.error("Error retrieving filtered leave requests", error);
+      ResponseHandler.sendErrorResponse(res, StatusCodes.INTERNAL_SERVER_ERROR, "Failed to retrieve leave requests");
+    }
+  }
+  
   async getRemainingLeave(req: IAuthenticatedJWTRequest, res: Response): Promise<void> {
     try {
       const userId = parseInt(req.params.userId);
