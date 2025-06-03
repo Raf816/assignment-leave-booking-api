@@ -425,4 +425,52 @@ export class LeaveRequestController {
     }
   }
   
+  async updateLeaveBalance(req: IAuthenticatedJWTRequest, res: Response): Promise<void> {
+    try {
+      const userId = parseInt(req.params.id);
+      const { annualLeaveBalance } = req.body;
+  
+      if (!userId || isNaN(userId)) {
+        ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, "Invalid user ID");
+        return;
+      }
+  
+      if (annualLeaveBalance === undefined || isNaN(annualLeaveBalance)) {
+        ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, "Annual leave balance must be a valid number");
+        return;
+      }
+  
+      if (annualLeaveBalance < 0) {
+        ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, "Annual leave balance cannot be negative");
+        return;
+      }
+  
+      const userRepo = AppDataSource.getRepository(User);
+      const user = await userRepo.findOne({
+        where: { id: userId },
+        relations: ["role"]
+      });
+  
+      if (!user) {
+        ResponseHandler.sendErrorResponse(res, StatusCodes.NOT_FOUND, "User not found");
+        return;
+      }
+  
+      user.annualLeaveBalance = annualLeaveBalance;
+      await userRepo.save(user);
+  
+      Logger.info(`Leave balance for ${user.email} updated by ${req.signedInUser?.email}`);
+  
+      ResponseHandler.sendSuccessResponse(res, {
+        userId: user.id,
+        fullName: `${user.firstName} ${user.lastName}`,
+        email: user.email,
+        updatedBalance: user.annualLeaveBalance
+      }, StatusCodes.OK, "Leave balance successfully updated");
+  
+    } catch (error) {
+      Logger.error("Error updating leave balance", error);
+      ResponseHandler.sendErrorResponse(res, StatusCodes.INTERNAL_SERVER_ERROR, "Failed to update leave balance");
+    }
+  }  
 }

@@ -93,5 +93,14 @@ export class LeaveRequestRouter implements IRouter {
       this.leaveRequestController.getLeaveBalance
     );
 
+    // ADMIN: Update leave balance for a user
+    this.router.patch(
+      "/balance/:id",
+      MiddlewareFactory.authenticateToken,
+      MiddlewareFactory.requireRole(["admin"]),
+      MiddlewareFactory.jwtRateLimitMiddleware(this.basePath),
+      MiddlewareFactory.logRouteAccess(this.basePath),
+      this.leaveRequestController.updateLeaveBalance
+    );
   }
 }
