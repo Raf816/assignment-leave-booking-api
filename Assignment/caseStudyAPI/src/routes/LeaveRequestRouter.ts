@@ -82,5 +82,16 @@ export class LeaveRequestRouter implements IRouter {
       MiddlewareFactory.logRouteAccess(this.basePath),
       this.leaveRequestController.getRemainingLeave
     );
+
+    // MANAGER/ADMIN: View leave balance for any staff member
+    this.router.get(
+      "/balance/:id",
+      MiddlewareFactory.authenticateToken,
+      MiddlewareFactory.requireRole(["admin", "manager"]),
+      MiddlewareFactory.jwtRateLimitMiddleware(this.basePath),
+      MiddlewareFactory.logRouteAccess(this.basePath),
+      this.leaveRequestController.getLeaveBalance
+    );
+
   }
 }

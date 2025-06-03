@@ -392,4 +392,37 @@ export class LeaveRequestController {
       ResponseHandler.sendErrorResponse(res, StatusCodes.INTERNAL_SERVER_ERROR, "Failed to get remaining leave");
     }
   }
+
+  async getLeaveBalance(req: IAuthenticatedJWTRequest, res: Response): Promise<void> {
+    try {
+      const userRepo = AppDataSource.getRepository(User);
+      const staffId = parseInt(req.params.id);
+  
+      if (isNaN(staffId)) {
+        ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, "Invalid user ID");
+        return;
+      }
+  
+      const staff = await userRepo.findOne({
+        where: { id: staffId },
+        relations: ["role"],
+      });
+  
+      if (!staff) {
+        ResponseHandler.sendErrorResponse(res, StatusCodes.NOT_FOUND, "Staff member not found");
+        return;
+      }
+  
+      ResponseHandler.sendSuccessResponse(res, {
+        userId: staff.id,
+        name: `${staff.firstName} ${staff.lastName}`,
+        remainingBalance: staff.annualLeaveBalance,
+        department: staff.department,
+      }, StatusCodes.OK);
+    } catch (err) {
+      Logger.error("Error fetching leave balance", err);
+      ResponseHandler.sendErrorResponse(res, StatusCodes.INTERNAL_SERVER_ERROR, "Failed to retrieve balance");
+    }
+  }
+  
 }
