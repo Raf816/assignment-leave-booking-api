@@ -472,5 +472,40 @@ export class LeaveRequestController {
       Logger.error("Error updating leave balance", error);
       ResponseHandler.sendErrorResponse(res, StatusCodes.INTERNAL_SERVER_ERROR, "Failed to update leave balance");
     }
-  }  
+  }
+  
+    async getPendingRequests(req: IAuthenticatedJWTRequest, res: Response): Promise<void> {
+    try {
+      const leaveRepo = AppDataSource.getRepository(LeaveRequest);
+
+      const pendingRequests = await leaveRepo.find({
+        where: { status: LeaveStatus.PENDING },
+        relations: ["user"],
+        order: { createdAt: "DESC" },
+      });
+
+      const formatted = pendingRequests.map(lr => ({
+        id: lr.id,
+        leaveType: lr.leaveType,
+        startDate: lr.startDate,
+        endDate: lr.endDate,
+        reason: lr.reason,
+        createdAt: lr.createdAt,
+        updatedAt: lr.updatedAt,
+        user: {
+          id: lr.user.id,
+          email: lr.user.email,
+          firstName: lr.user.firstName,
+          lastName: lr.user.lastName,
+        }
+      }));
+
+      Logger.info(`Pending leave requests retrieved by ${req.signedInUser?.email}`);
+      ResponseHandler.sendSuccessResponse(res, formatted, StatusCodes.OK);
+    } catch (error) {
+      Logger.error("Error retrieving pending leave requests", error);
+      ResponseHandler.sendErrorResponse(res, StatusCodes.INTERNAL_SERVER_ERROR, "Failed to retrieve pending leave requests");
+    }
+  }
+
 }

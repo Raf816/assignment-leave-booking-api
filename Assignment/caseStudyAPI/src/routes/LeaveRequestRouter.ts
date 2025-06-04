@@ -102,5 +102,16 @@ export class LeaveRequestRouter implements IRouter {
       MiddlewareFactory.logRouteAccess(this.basePath),
       this.leaveRequestController.updateLeaveBalance
     );
+
+    // MANAGER/ADMIN: View pending leave requests
+    this.router.get(
+      "/pending",
+      MiddlewareFactory.authenticateToken,
+      MiddlewareFactory.requireRole(["admin", "manager"]),
+      MiddlewareFactory.jwtRateLimitMiddleware(this.basePath),
+      MiddlewareFactory.logRouteAccess(this.basePath),
+      this.leaveRequestController.getPendingRequests
+    );
+
   }
 }
