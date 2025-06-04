@@ -4,6 +4,7 @@ import * as dotenv from "dotenv";
 import { User } from "./entity/User";
 import { Role } from "./entity/Role";
 import { LeaveRequest } from "./entity/LeaveRequest";
+import { UserManagement } from "./entity/UserManagement";
 dotenv.config({ path: `.env.${process.env.NODE_ENV || "development"}` });
 
 export const AppDataSource = new DataSource({
@@ -15,5 +16,5 @@ export const AppDataSource = new DataSource({
     database: process.env.DB_DATABASE,
     synchronize: true,
     logging: false,
-    entities: [Role, User, LeaveRequest]
+    entities: [Role, User, LeaveRequest, UserManagement]
 });
