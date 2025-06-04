@@ -120,7 +120,7 @@ export class LeaveRequestRouter implements IRouter {
     MiddlewareFactory.requireRole(["admin", "manager"]),
     MiddlewareFactory.jwtRateLimitMiddleware(this.basePath),
     MiddlewareFactory.logRouteAccess(this.basePath),
-    this.leaveRequestController.getRequestsByUser
+    this.leaveRequestController.getUserLeaveRequests
   );
   }
 }

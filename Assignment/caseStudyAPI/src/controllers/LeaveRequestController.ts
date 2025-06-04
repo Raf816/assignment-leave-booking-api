@@ -508,51 +508,67 @@ export class LeaveRequestController {
   }
 }
 
-async getRequestsByUser(req: IAuthenticatedJWTRequest, res: Response): Promise<void> {
-  try {
-    const userId = parseInt(req.params.id);
-    const status = req.query.status as string | undefined;
+  async getUserLeaveRequests(req: IAuthenticatedJWTRequest, res: Response): Promise<void> {
+    try {
+      const userId = parseInt(req.params.id);
+      const status = req.query.status as string | undefined;
 
-    if (isNaN(userId)) {
-      ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, "Invalid user ID");
-      return;
-    }
-
-    const leaveRepo = AppDataSource.getRepository(LeaveRequest);
-
-    const whereClause: any = { user: { id: userId } };
-    if (status) whereClause.status = status;
-
-    const requests = await leaveRepo.find({
-      where: whereClause,
-      relations: ["user"],
-      order: { createdAt: "DESC" }
-    });
-
-    const formatted = requests.map(r => ({
-      id: r.id,
-      leaveType: r.leaveType,
-      startDate: r.startDate,
-      endDate: r.endDate,
-      status: r.status,
-      reason: r.reason,
-      createdAt: r.createdAt,
-      updatedAt: r.updatedAt,
-      user: {
-        id: r.user.id,
-        email: r.user.email,
-        firstName: r.user.firstName,
-        lastName: r.user.lastName
+      if (isNaN(userId)) {
+        ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, "Invalid user ID");
+        return;
       }
-    }));
 
-    Logger.info(`Leave requests for user ${userId} viewed by ${req.signedInUser?.email}`);
-    ResponseHandler.sendSuccessResponse(res, formatted, StatusCodes.OK);
-  } catch (error) {
-    Logger.error("Error getting leave requests by user", error);
-    ResponseHandler.sendErrorResponse(res, StatusCodes.INTERNAL_SERVER_ERROR, "Failed to retrieve leave requests");
+      const userRepo = AppDataSource.getRepository(User);
+      const user = await userRepo.findOne({ where: { id: userId } });
+
+      if (!user) {
+        ResponseHandler.sendErrorResponse(res, StatusCodes.NOT_FOUND, "User not found");
+        return;
+      }
+
+      const leaveRepo = AppDataSource.getRepository(LeaveRequest);
+      const whereClause: any = { user: { id: userId } };
+      if (status) whereClause.status = status;
+
+      const leaveRequests = await leaveRepo.find({
+        where: whereClause,
+        order: { createdAt: "DESC" },
+        relations: ["user"]
+      });
+
+      if (leaveRequests.length === 0) {
+        Logger.info(`No leave requests found for user ${userId}`);
+        ResponseHandler.sendSuccessResponse(
+          res,
+          [],
+          StatusCodes.OK,
+          `No leave requests found for ${user.firstName} ${user.lastName}`
+        );
+        return;
+      }
+
+      const formatted = leaveRequests.map(r => ({
+        id: r.id,
+        leaveType: r.leaveType,
+        startDate: r.startDate,
+        endDate: r.endDate,
+        status: r.status,
+        reason: r.reason,
+        createdAt: r.createdAt,
+        updatedAt: r.updatedAt,
+        user: {
+          id: r.user.id,
+          email: r.user.email,
+          firstName: r.user.firstName,
+          lastName: r.user.lastName
+        }
+      }));
+
+      Logger.info(`Leave requests for user ${userId} viewed by ${req.signedInUser?.email}`);
+      ResponseHandler.sendSuccessResponse(res, formatted, StatusCodes.OK);
+    } catch (error) {
+      Logger.error("Error retrieving user leave requests", error);
+      ResponseHandler.sendErrorResponse(res, StatusCodes.INTERNAL_SERVER_ERROR, "Failed to retrieve leave requests");
+    }
   }
-}
-
-
 }
