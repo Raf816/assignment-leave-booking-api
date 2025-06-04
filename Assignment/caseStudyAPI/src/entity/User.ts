@@ -1,8 +1,9 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, BeforeInsert, BeforeUpdate } from "typeorm"
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, BeforeInsert, BeforeUpdate, OneToMany } from "typeorm"
 import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
 import { Role } from "./Role"; 
 import { Exclude } from "class-transformer";
 import { PasswordHandler } from '../helper/PasswordHandler';
+import { UserManagement } from "./UserManagement";
 
 @Entity({ name: "user" })
 export class User {
@@ -58,6 +59,11 @@ export class User {
     this.salt = salt;
     }
 
+    @OneToMany(() => UserManagement, um => um.manager)
+    managedStaff: UserManagement[];
+
+    @OneToMany(() => UserManagement, um => um.staff)
+    manager: UserManagement[];
 
     @Column()
     @IsNotEmpty({ message: 'First name is required' })
@@ -75,5 +81,4 @@ export class User {
     @Column({ nullable: true })
     @IsString()
     department: string;
-
 }
