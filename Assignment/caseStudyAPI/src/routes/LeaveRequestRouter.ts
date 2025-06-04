@@ -113,5 +113,14 @@ export class LeaveRequestRouter implements IRouter {
       this.leaveRequestController.getPendingRequests
     );
 
+    // ADMIN/MANAGER: View leave requests by user
+  this.router.get(
+    "/user/:id",
+    MiddlewareFactory.authenticateToken,
+    MiddlewareFactory.requireRole(["admin", "manager"]),
+    MiddlewareFactory.jwtRateLimitMiddleware(this.basePath),
+    MiddlewareFactory.logRouteAccess(this.basePath),
+    this.leaveRequestController.getRequestsByUser
+  );
   }
 }
