@@ -9,6 +9,7 @@ import { Logger } from '../helper/Logger';
 import { ResponseHandler } from '../helper/ResponseHandler';
 import { StatusCodes } from 'http-status-codes';
 import { In } from 'typeorm';
+import { UserManagement } from '../entity/UserManagement';
 
 export class LeaveRequestController {
   async requestLeave(req: IAuthenticatedJWTRequest, res: Response): Promise<void> {
@@ -474,39 +475,84 @@ export class LeaveRequestController {
     }
   }
   
-  async getPendingRequests(req: IAuthenticatedJWTRequest, res: Response): Promise<void> {
-  try {
-    const leaveRepo = AppDataSource.getRepository(LeaveRequest);
+    async getPendingRequests(req: IAuthenticatedJWTRequest, res: Response): Promise<void> {
+    try {
+      const leaveRepo = AppDataSource.getRepository(LeaveRequest);
+      const userManagementRepo = AppDataSource.getRepository(UserManagement);
+      const userRepo = AppDataSource.getRepository(User);
+      const currentUser = await userRepo.findOne({
+        where: { email: req.signedInUser?.email },
+      });
 
-    const pendingRequests = await leaveRepo.find({
-      where: { status: LeaveStatus.PENDING },
-      relations: ["user"],
-      order: { createdAt: "DESC" },
-    });
 
-    const formatted = pendingRequests.map(lr => ({
-      id: lr.id,
-      leaveType: lr.leaveType,
-      startDate: lr.startDate,
-      endDate: lr.endDate,
-      reason: lr.reason,
-      createdAt: lr.createdAt,
-      updatedAt: lr.updatedAt,
-      user: {
-        id: lr.user.id,
-        email: lr.user.email,
-        firstName: lr.user.firstName,
-        lastName: lr.user.lastName,
+      if (!currentUser) {
+        ResponseHandler.sendErrorResponse(res, StatusCodes.UNAUTHORIZED, "Not authenticated");
+        return;
       }
-    }));
 
-    Logger.info(`Pending leave requests retrieved by ${req.signedInUser?.email}`);
-    ResponseHandler.sendSuccessResponse(res, formatted, StatusCodes.OK);
-  } catch (error) {
-    Logger.error("Error retrieving pending leave requests", error);
-    ResponseHandler.sendErrorResponse(res, StatusCodes.INTERNAL_SERVER_ERROR, "Failed to retrieve pending leave requests");
+      const isAdmin = currentUser.role?.name?.toLowerCase() === "admin";
+      const isManager = currentUser.role?.name?.toLowerCase() === "manager";
+
+      let pendingRequests: LeaveRequest[] = [];
+
+      if (isAdmin) {
+        // Admin sees all pending
+        pendingRequests = await leaveRepo.find({
+          where: { status: LeaveStatus.PENDING },
+          relations: ["user"],
+          order: { createdAt: "DESC" },
+        });
+      } else if (isManager) {
+        // Manager sees only requests from their managed staff
+        const managedRelations = await userManagementRepo.find({
+          where: { manager: { id: currentUser.id } },
+          relations: ["staff"]
+        });
+
+        const managedStaffIds = managedRelations.map(rel => rel.staff.id);
+        if (managedStaffIds.length === 0) {
+          ResponseHandler.sendSuccessResponse(res, [], StatusCodes.OK, "No pending requests for your staff");
+          return;
+        }
+
+        pendingRequests = await leaveRepo.find({
+          where: {
+            status: LeaveStatus.PENDING,
+            user: { id: In(managedStaffIds) }
+          },
+          relations: ["user"],
+          order: { createdAt: "DESC" }
+        });
+      } else {
+        ResponseHandler.sendErrorResponse(res, StatusCodes.FORBIDDEN, "Not authorized to view pending requests");
+        return;
+      }
+
+      const formatted = pendingRequests.map(lr => ({
+        id: lr.id,
+        leaveType: lr.leaveType,
+        startDate: lr.startDate,
+        endDate: lr.endDate,
+        reason: lr.reason,
+        createdAt: lr.createdAt,
+        updatedAt: lr.updatedAt,
+        user: {
+          id: lr.user.id,
+          email: lr.user.email,
+          firstName: lr.user.firstName,
+          lastName: lr.user.lastName,
+        }
+      }));
+
+      Logger.info(`Pending leave requests retrieved by ${currentUser.email}`);
+      ResponseHandler.sendSuccessResponse(res, formatted, StatusCodes.OK);
+
+    } catch (error) {
+      Logger.error("Error retrieving pending leave requests", error);
+      ResponseHandler.sendErrorResponse(res, StatusCodes.INTERNAL_SERVER_ERROR, "Failed to retrieve pending leave requests");
+    }
   }
-}
+
 
   async getUserLeaveRequests(req: IAuthenticatedJWTRequest, res: Response): Promise<void> {
     try {
