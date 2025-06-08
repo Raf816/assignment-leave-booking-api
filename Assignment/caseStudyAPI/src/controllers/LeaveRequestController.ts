@@ -12,6 +12,7 @@ import { In } from 'typeorm';
 import { UserManagement } from '../entity/UserManagement';
 import { ILeaveRequestController } from '../interfaces/ILeaveRequestController';
 import { ValidationUtil } from '../helper/ValidationUtils';
+import { ErrorMessages } from '../constants/ErrorMessages';
 
 export class LeaveRequestController implements ILeaveRequestController {
   async requestLeave(req: IAuthenticatedJWTRequest, res: Response): Promise<void> {
@@ -24,14 +25,14 @@ export class LeaveRequestController implements ILeaveRequestController {
       const emailFromToken = req.signedInUser?.email;
       if (!emailFromToken) {
         Logger.error("Missing email in signedInUser");
-        ResponseHandler.sendErrorResponse(res, StatusCodes.UNAUTHORIZED, "User not authorised");
+        ResponseHandler.sendErrorResponse(res, StatusCodes.UNAUTHORIZED, ErrorMessages.UNAUTHORISED_USER);
         return;
       }
 
       const user = await userRepository.findOne({ where: { email: emailFromToken } });
       if (!user) {
         Logger.error(`User not found: ${emailFromToken}`);
-        ResponseHandler.sendErrorResponse(res, StatusCodes.NOT_FOUND, "User not found");
+        ResponseHandler.sendErrorResponse(res, StatusCodes.NOT_FOUND, ErrorMessages.USER_NOT_FOUND);
         return;
       }
 
@@ -40,11 +41,7 @@ export class LeaveRequestController implements ILeaveRequestController {
 
       if (end <= start) {
         Logger.warn("End date before or equal to start date");
-        ResponseHandler.sendErrorResponse(
-          res,
-          StatusCodes.BAD_REQUEST,
-          `End date of ${endDate} is before the start date of ${startDate}`
-        );
+        ResponseHandler.sendErrorResponse(res,StatusCodes.BAD_REQUEST,`End date of ${endDate} is before the start date of ${startDate}`);
         return;
       }
 
@@ -82,14 +79,14 @@ export class LeaveRequestController implements ILeaveRequestController {
       });
 
       if (overlap) {
-        ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, "Leave dates overlap with an existing request");
+        ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, ErrorMessages.OVERLAPPING_LEAVE);
         return;
       }
 
       const totalRequestedDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
       if (totalRequestedDays > user.annualLeaveBalance) {
         Logger.warn(`Requested ${totalRequestedDays} days, but only ${user.annualLeaveBalance} available`);
-        ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, "Days requested exceed remaining balance");
+        ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, ErrorMessages.LEAVE_EXCEEDS_BALANCE);
         return;
       }
 
@@ -106,7 +103,7 @@ export class LeaveRequestController implements ILeaveRequestController {
       );
     } catch (err) {
       Logger.error("Unhandled error in requestLeave", err);
-      ResponseHandler.sendErrorResponse(res, StatusCodes.INTERNAL_SERVER_ERROR, "An error occurred while processing the request");
+      ResponseHandler.sendErrorResponse(res, StatusCodes.INTERNAL_SERVER_ERROR, ErrorMessages.INTERNAL_ERROR);
     }
   }
 
@@ -144,7 +141,7 @@ export class LeaveRequestController implements ILeaveRequestController {
       const leaveId = parseInt(req.params.id);
   
       if (isNaN(leaveId)) {
-        ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, "Invalid leave request ID");
+        ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, ErrorMessages.INVALID_LEAVE_ID);
         return;
       }
   
@@ -154,7 +151,7 @@ export class LeaveRequestController implements ILeaveRequestController {
       });
   
       if (!leave) {
-        ResponseHandler.sendErrorResponse(res, StatusCodes.NOT_FOUND, "Leave request not found");
+        ResponseHandler.sendErrorResponse(res, StatusCodes.NOT_FOUND, ErrorMessages.LEAVE_REQUEST_NOT_FOUND);
         return;
       }
   
@@ -175,7 +172,7 @@ export class LeaveRequestController implements ILeaveRequestController {
       }
   
       if (user.annualLeaveBalance < totalDays) {
-        ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, "Insufficient leave balance to approve");
+        ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, ErrorMessages.USER_NOT_FOUND);
         return;
       }
   
@@ -192,7 +189,7 @@ export class LeaveRequestController implements ILeaveRequestController {
   
     } catch (error) {
       Logger.error("Error approving leave request", error);
-      ResponseHandler.sendErrorResponse(res, StatusCodes.INTERNAL_SERVER_ERROR, "Failed to approve leave request");
+      ResponseHandler.sendErrorResponse(res, StatusCodes.INTERNAL_SERVER_ERROR, ErrorMessages.FAILED_TO_APPROVE);
     }
   }
 
@@ -203,7 +200,7 @@ export class LeaveRequestController implements ILeaveRequestController {
       const { reason = "Leave request rejected" } = req.body || {}; //optional leave reason + default message
 
       if (isNaN(leaveId)) {
-        ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, "Invalid Leave Request ID");
+        ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, ErrorMessages.INVALID_LEAVE_ID);
         return;
       }
 
@@ -213,7 +210,7 @@ export class LeaveRequestController implements ILeaveRequestController {
       });
 
       if (!leave) {
-        ResponseHandler.sendErrorResponse(res, StatusCodes.NOT_FOUND, "Leave Request not found");
+        ResponseHandler.sendErrorResponse(res, StatusCodes.NOT_FOUND, ErrorMessages.LEAVE_REQUEST_NOT_FOUND);
         return;
       }
 
@@ -229,7 +226,7 @@ export class LeaveRequestController implements ILeaveRequestController {
       ResponseHandler.sendSuccessResponse(res, instanceToPlain(saved), StatusCodes.OK);
     } catch (error) {
       Logger.error("Error rejecting leave request", error);
-      ResponseHandler.sendErrorResponse(res, StatusCodes.INTERNAL_SERVER_ERROR, "Failed to reject the leave request");
+      ResponseHandler.sendErrorResponse(res, StatusCodes.INTERNAL_SERVER_ERROR, ErrorMessages.FAILED_TO_REJECT);
     }
   }
   
@@ -240,7 +237,7 @@ export class LeaveRequestController implements ILeaveRequestController {
       const leaveId = parseInt(req.params.id);
 
       if (isNaN(leaveId)) {
-        ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, "Invalid leave request ID");
+        ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, ErrorMessages.INVALID_LEAVE_ID);
         return;
       }
 
@@ -250,7 +247,7 @@ export class LeaveRequestController implements ILeaveRequestController {
       });
 
       if (!leave) {
-        ResponseHandler.sendErrorResponse(res, StatusCodes.NOT_FOUND, "Leave request not found");
+        ResponseHandler.sendErrorResponse(res, StatusCodes.NOT_FOUND, ErrorMessages.LEAVE_REQUEST_NOT_FOUND);
         return;
       }
 
