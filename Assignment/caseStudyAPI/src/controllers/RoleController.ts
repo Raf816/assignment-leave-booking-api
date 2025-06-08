@@ -5,8 +5,8 @@ import { Repository } from "typeorm";
 import { StatusCodes } from 'http-status-codes';
 import { ResponseHandler } from '../helper/ResponseHandler';
 import { validate } from "class-validator";
-import { IEntityController } from './IEntityController';
 import { AppError } from "../helper/AppError";
+import { IEntityController } from './IEntityController';
 
 export class RoleController implements IEntityController{
     public static readonly ERROR_NO_ID_PROVIDED = "No ID provided";

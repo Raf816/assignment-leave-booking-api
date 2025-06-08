@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { Response, request } from "express";
 import { AppDataSource } from "../data-source";
 import { User } from "../entity/User";
 import { UserManagement } from "../entity/UserManagement";
@@ -6,14 +6,16 @@ import { Logger } from "../helper/Logger";
 import { ResponseHandler } from "../helper/ResponseHandler";
 import { StatusCodes } from "http-status-codes";
 import { IAuthenticatedJWTRequest } from "../types/IAuthenticatedJWTRequest";
+import { IUserManagementController } from "../interfaces/IUserManagementController";
+import { ValidationUtil } from "../helper/ValidationUtils";
 
-export class UserManagementController {
+export class UserManagementController implements IUserManagementController {
   async assignManagerToStaff(req: IAuthenticatedJWTRequest, res: Response): Promise<void> {
     try {
       const { staffId, managerId, startDate } = req.body;
 
       if (!staffId || !managerId) {
-        ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST,"Both staffId and managerId are required");
+        ResponseHandler.sendErrorResponse(res,StatusCodes.BAD_REQUEST,"Both staffId and managerId are required");
         return;
       }
 
@@ -24,7 +26,7 @@ export class UserManagementController {
       const manager = await userRepo.findOneBy({ id: managerId });
 
       if (!staff || !manager) {
-        ResponseHandler.sendErrorResponse(res, StatusCodes.NOT_FOUND, "Staff or manager user not found");
+        ResponseHandler.sendErrorResponse(res,StatusCodes.NOT_FOUND,"Staff or manager user not found"); 
         return;
       }
 
@@ -36,7 +38,7 @@ export class UserManagementController {
       });
 
       if (existing) {
-        ResponseHandler.sendErrorResponse(res, StatusCodes.CONFLICT, "This staff is already assigned to the given manager");
+        ResponseHandler.sendErrorResponse(res,StatusCodes.CONFLICT,"This staff is already assigned to the given manager"); 
         return;
       }
 
@@ -45,6 +47,8 @@ export class UserManagementController {
         manager,
         startDate: startDate ? new Date(startDate) : new Date()
       });
+
+      await ValidationUtil.validateOrThrow(mapping);
 
       await userManagementRepo.save(mapping);
 
@@ -56,18 +60,12 @@ export class UserManagementController {
           managerId: manager.id,
           startDate: mapping.startDate
         },
-        StatusCodes.CREATED,
-        "Manager assigned to staff successfully"
-      );
-      return;
-      
+        StatusCodes.CREATED,"Manager assigned to staff successfully");
+        return;
+
     } catch (error) {
       Logger.error("Error assigning manager to staff", error);
-      ResponseHandler.sendErrorResponse(
-        res,
-        StatusCodes.INTERNAL_SERVER_ERROR,
-        "Failed to assign manager"
-      );
+      ResponseHandler.sendErrorResponse(res,StatusCodes.INTERNAL_SERVER_ERROR, "Failed to assign manager"); 
       return;
     }
   }

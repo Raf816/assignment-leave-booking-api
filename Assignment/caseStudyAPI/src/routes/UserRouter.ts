@@ -1,7 +1,8 @@
-import { Router } from "express";  // Correctly import Router
+import { Router } from "express";  
 import { IRouter } from "./IRouter";
 import { IEntityController } from "../controllers/IEntityController";
 import { IGetByEmail } from "../controllers/IGetByEmail";
+
 
 export class UserRouter implements IRouter{
   public routeName = "users";

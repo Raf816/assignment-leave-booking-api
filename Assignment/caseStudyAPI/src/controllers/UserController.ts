@@ -6,7 +6,7 @@ import { ResponseHandler } from '../helper/ResponseHandler';
 import { instanceToPlain } from "class-transformer";
 import { StatusCodes } from 'http-status-codes';
 import { validate } from "class-validator";
-import { IEntityController} from './IEntityController';
+import { IEntityController } from './IEntityController';
 import { AppError } from "../helper/AppError";
 import { PasswordHandler } from '../helper/PasswordHandler';
 
