@@ -11,6 +11,7 @@ import { StatusCodes } from 'http-status-codes';
 import { In } from 'typeorm';
 import { UserManagement } from '../entity/UserManagement';
 import { ILeaveRequestController } from '../interfaces/ILeaveRequestController';
+import { ValidationUtil } from '../helper/ValidationUtils';
 
 export class LeaveRequestController implements ILeaveRequestController {
   async requestLeave(req: IAuthenticatedJWTRequest, res: Response): Promise<void> {
@@ -37,6 +38,16 @@ export class LeaveRequestController implements ILeaveRequestController {
       const start = new Date(startDate);
       const end = new Date(endDate);
 
+      if (end <= start) {
+        Logger.warn("End date before or equal to start date");
+        ResponseHandler.sendErrorResponse(
+          res,
+          StatusCodes.BAD_REQUEST,
+          `End date of ${endDate} is before the start date of ${startDate}`
+        );
+        return;
+      }
+
       const leave = new LeaveRequest();
       leave.user = user;
       leave.startDate = startDate;
@@ -45,21 +56,11 @@ export class LeaveRequestController implements ILeaveRequestController {
       leave.leaveType = leaveType || "Annual Leave";
       leave.reason = reason;
 
-      const validationErrors = await validate(leave);
-      if (validationErrors.length > 0) {
-        const firstError = Object.values(validationErrors[0].constraints || {})[0];
-        Logger.warn(`Validation failed: ${firstError}`);
-        ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, firstError);
-        return;
-      }
-
-      if (end <= start) {
-        Logger.warn("End date before or equal to start date");
-        ResponseHandler.sendErrorResponse(
-          res,
-          StatusCodes.BAD_REQUEST,
-          `End date of ${endDate} is before the start date of ${startDate}`
-        );
+      try {
+        await ValidationUtil.validateOrThrow(leave);
+      } catch (err: any) {
+        Logger.warn("Validation failed:", err.message);
+        ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, err.message);
         return;
       }
 
@@ -74,11 +75,9 @@ export class LeaveRequestController implements ILeaveRequestController {
         const existingStart = new Date(r.startDate);
         const existingEnd = new Date(r.endDate);
         const overlaps = start <= existingEnd && end >= existingStart;
-
         if (overlaps) {
           Logger.warn(`Overlap with leave from ${existingStart.toDateString()} to ${existingEnd.toDateString()}`);
         }
-
         return overlaps;
       });
 
@@ -95,7 +94,6 @@ export class LeaveRequestController implements ILeaveRequestController {
       }
 
       const savedLeave = await leaveRepository.save(leave);
-
       Logger.info(`Leave request submitted by ${user.email} for ${totalRequestedDays} days`);
 
       ResponseHandler.sendSuccessResponse(
@@ -108,11 +106,7 @@ export class LeaveRequestController implements ILeaveRequestController {
       );
     } catch (err) {
       Logger.error("Unhandled error in requestLeave", err);
-      ResponseHandler.sendErrorResponse(
-        res,
-        StatusCodes.INTERNAL_SERVER_ERROR,
-        "An error occurred while processing the request"
-      );
+      ResponseHandler.sendErrorResponse(res, StatusCodes.INTERNAL_SERVER_ERROR, "An error occurred while processing the request");
     }
   }
 
@@ -127,7 +121,6 @@ export class LeaveRequestController implements ILeaveRequestController {
       }
 
       const leaveRepo = AppDataSource.getRepository(LeaveRequest);
-
       const myRequests = await leaveRepo.find({
         where: {
           user: { email }
@@ -232,10 +225,8 @@ export class LeaveRequestController implements ILeaveRequestController {
       leave.reason = reason || "Leave request rejected";
       
       const saved = await leaveRepo.save(leave);
-
       Logger.info(`Leave request ID ${leave.id} rejected by ${req.signedInUser?.email}`);
       ResponseHandler.sendSuccessResponse(res, instanceToPlain(saved), StatusCodes.OK);
-
     } catch (error) {
       Logger.error("Error rejecting leave request", error);
       ResponseHandler.sendErrorResponse(res, StatusCodes.INTERNAL_SERVER_ERROR, "Failed to reject the leave request");
