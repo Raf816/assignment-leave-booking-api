@@ -8,6 +8,7 @@ import { StatusCodes } from "http-status-codes";
 import { IAuthenticatedJWTRequest } from "../types/IAuthenticatedJWTRequest";
 import { IUserManagementController } from "../interfaces/IUserManagementController";
 import { ValidationUtil } from "../helper/ValidationUtils";
+import { ErrorMessages } from "../constants/ErrorMessages";
 
 export class UserManagementController implements IUserManagementController {
   async assignManagerToStaff(req: IAuthenticatedJWTRequest, res: Response): Promise<void> {
@@ -15,7 +16,7 @@ export class UserManagementController implements IUserManagementController {
       const { staffId, managerId, startDate } = req.body;
 
       if (!staffId || !managerId) {
-        ResponseHandler.sendErrorResponse(res,StatusCodes.BAD_REQUEST,"Both staffId and managerId are required");
+        ResponseHandler.sendErrorResponse(res,StatusCodes.BAD_REQUEST,ErrorMessages.STAFF_OR_MANAGER_ID_REQUIRED);
         return;
       }
 
@@ -26,7 +27,7 @@ export class UserManagementController implements IUserManagementController {
       const manager = await userRepo.findOneBy({ id: managerId });
 
       if (!staff || !manager) {
-        ResponseHandler.sendErrorResponse(res,StatusCodes.NOT_FOUND,"Staff or manager user not found"); 
+        ResponseHandler.sendErrorResponse(res,StatusCodes.NOT_FOUND,ErrorMessages.STAFF_OR_MANAGER_NOT_FOUND); 
         return;
       }
 
@@ -38,7 +39,7 @@ export class UserManagementController implements IUserManagementController {
       });
 
       if (existing) {
-        ResponseHandler.sendErrorResponse(res,StatusCodes.CONFLICT,"This staff is already assigned to the given manager"); 
+        ResponseHandler.sendErrorResponse(res,StatusCodes.CONFLICT,ErrorMessages.ASSIGNMENT_ALREADY_EXISTS); 
         return;
       }
 
@@ -60,12 +61,12 @@ export class UserManagementController implements IUserManagementController {
           managerId: manager.id,
           startDate: mapping.startDate
         },
-        StatusCodes.CREATED,"Manager assigned to staff successfully");
+        StatusCodes.CREATED,ErrorMessages.ASSIGNMENT_SUCCESS);
         return;
 
     } catch (error) {
       Logger.error("Error assigning manager to staff", error);
-      ResponseHandler.sendErrorResponse(res,StatusCodes.INTERNAL_SERVER_ERROR, "Failed to assign manager"); 
+      ResponseHandler.sendErrorResponse(res,StatusCodes.INTERNAL_SERVER_ERROR, ErrorMessages.ASSIGNMENT_FAILED); 
       return;
     }
   }

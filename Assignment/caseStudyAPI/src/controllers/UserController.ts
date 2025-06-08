@@ -10,22 +10,9 @@ import { IEntityController } from './IEntityController';
 import { AppError } from "../helper/AppError";
 import { PasswordHandler } from '../helper/PasswordHandler';
 import { ValidationUtil } from '../helper/ValidationUtils';
+import { ErrorMessages } from '../constants/ErrorMessages';
 
 export class UserController implements IEntityController {
-  // Error constants
-  public static readonly ERROR_NO_USER_ID_PROVIDED = "No ID provided";
-  public static readonly ERROR_INVALID_USER_ID_FORMAT = "Invalid ID format";
-  public static readonly ERROR_USER_NOT_FOUND = "User not found";
-  public static readonly ERROR_USER_NOT_FOUND_WITH_ID = (id: number) => `User not found with ID: ${id}`;
-  public static readonly ERROR_PASSWORD_IS_BLANK = "Password is blank";
-  public static readonly ERROR_FAILED_TO_RETRIEVE_USERS = "Failed to retrieve users";
-  public static readonly ERROR_FAILED_TO_RETRIEVE_USER = "Failed to retrieve user";
-  public static readonly ERROR_USER_NOT_FOUND_FOR_DELETION = "User with the provided ID not found";
-  public static readonly ERROR_EMAIL_REQUIRED = "Email is required";
-  public static readonly ERROR_EMAIL_NOT_FOUND = (email: string) => `${email} not found`;
-  public static readonly ERROR_RETRIEVING_USER = (error: string) => `Error retrieving user: ${error}`;
-  public static readonly ERROR_VALIDATION_FAILED = "Validation failed";
-
   private userRepository: Repository<User>;
 
   constructor() {
@@ -47,14 +34,14 @@ export class UserController implements IEntityController {
     const email = req.params.emailAddress;
 
     if (!email || email.trim().length === 0) {
-      ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, UserController.ERROR_EMAIL_REQUIRED);
+      ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, ErrorMessages.EMAIL_REQUIRED);
       return;
     }
 
     const user = await this.userRepository.find({ where: { email }, relations: ["role"] });
 
     if (user.length === 0) {
-      ResponseHandler.sendErrorResponse(res, StatusCodes.NOT_FOUND, UserController.ERROR_EMAIL_NOT_FOUND(email));
+      ResponseHandler.sendErrorResponse(res, StatusCodes.NOT_FOUND, ErrorMessages.EMAIL_NOT_FOUND(email));
       return;
     }
 
@@ -65,14 +52,14 @@ export class UserController implements IEntityController {
     const id = parseInt(req.params.id);
 
     if (isNaN(id)) {
-      ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, UserController.ERROR_INVALID_USER_ID_FORMAT);
+      ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, ErrorMessages.INVALID_USER_ID_FORMAT);
       return;
     }
 
     const user = await this.userRepository.findOne({ where: { id }, relations: ["role"] });
 
     if (!user) {
-      ResponseHandler.sendErrorResponse(res, StatusCodes.NOT_FOUND, UserController.ERROR_USER_NOT_FOUND_WITH_ID(id));
+      ResponseHandler.sendErrorResponse(res, StatusCodes.NOT_FOUND, ErrorMessages.USER_NOT_FOUND_WITH_ID(id));
       return;
     }
 
@@ -98,13 +85,13 @@ export class UserController implements IEntityController {
     const id = req.params.id;
 
     if (!id) {
-      throw new AppError(UserController.ERROR_NO_USER_ID_PROVIDED);
+      throw new AppError(ErrorMessages.NO_USER_ID_PROVIDED);
     }
 
     const result = await this.userRepository.delete(id);
 
     if (result.affected === 0) {
-      throw new AppError(UserController.ERROR_USER_NOT_FOUND_FOR_DELETION);
+      throw new AppError(ErrorMessages.USER_NOT_FOUND_FOR_DELETION);
     }
 
     ResponseHandler.sendSuccessResponse(res, "User deleted", StatusCodes.OK);
@@ -114,13 +101,13 @@ export class UserController implements IEntityController {
     const id = req.params.id ? parseInt(req.params.id) : req.body.id;
 
     if (!id || isNaN(id)) {
-      throw new AppError(UserController.ERROR_NO_USER_ID_PROVIDED);
+      throw new AppError(ErrorMessages.NO_USER_ID_PROVIDED);
     }
 
     let user = await this.userRepository.findOneBy({ id });
 
     if (!user) {
-      throw new AppError(UserController.ERROR_USER_NOT_FOUND);
+      throw new AppError(ErrorMessages.USER_NOT_FOUND);
     }
 
     user.email = req.body.email;
