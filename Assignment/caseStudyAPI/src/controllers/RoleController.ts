@@ -6,7 +6,7 @@ import { StatusCodes } from 'http-status-codes';
 import { ResponseHandler } from '../helper/ResponseHandler';
 import { validate } from "class-validator";
 import { IEntityController } from './IEntityController';
-import { AppError } from '../helper/AppError';
+import { AppError } from "../helper/AppError";
 
 export class RoleController implements IEntityController{
     public static readonly ERROR_NO_ID_PROVIDED = "No ID provided";
@@ -24,39 +24,60 @@ export class RoleController implements IEntityController{
     }
 
   // Get all roles
-    public getAll = async (req: Request, res: Response): Promise<void> =>{
+    public getAll = async (req: Request, res: Response): Promise<void> => {
+    try {
         const roles = await this.roleRepository.find();
 
         if (roles.length === 0) {
-            ResponseHandler.sendErrorResponse(res,
-                                                StatusCodes.NO_CONTENT);  
-            return;
+        ResponseHandler.sendErrorResponse(res, StatusCodes.NO_CONTENT);
+        return;
         }
 
-        ResponseHandler.sendSuccessResponse(res, roles);  
+        ResponseHandler.sendSuccessResponse(res, roles);
+    } catch (error) {
+        ResponseHandler.sendErrorResponse(
+        res,
+        StatusCodes.INTERNAL_SERVER_ERROR,
+        RoleController.ERROR_FAILED_TO_RETRIEVE_ROLES
+        );
+    }
     };
+
 
    // Get role by ID
-    public getById = async (req: Request, res: Response): Promise<void> => {    
+    public getById = async (req: Request, res: Response): Promise<void> => {
+    try {
         const id = parseInt(req.params.id);
-            
+
         if (isNaN(id)) {
-            ResponseHandler.sendErrorResponse(res, 
-                                                StatusCodes.BAD_REQUEST, 
-                                                RoleController.ERROR_INVALID_ID_FORMAT);
-            return;
+        ResponseHandler.sendErrorResponse(
+            res,
+            StatusCodes.BAD_REQUEST,
+            RoleController.ERROR_INVALID_ID_FORMAT
+        );
+        return;
         }
-    
-            const role = await this.roleRepository.findOne({ where: { id: id }});
-            if (!role) {
-                ResponseHandler.sendErrorResponse(res, 
-                                                    StatusCodes.NOT_FOUND, 
-                                                    RoleController.ERROR_ROLE_NOT_FOUND_WITH_ID(id));
-                return;
-            }
-            
-        ResponseHandler.sendSuccessResponse(res, role);                
+
+        const role = await this.roleRepository.findOne({ where: { id: id } });
+        if (!role) {
+        ResponseHandler.sendErrorResponse(
+            res,
+            StatusCodes.NOT_FOUND,
+            RoleController.ERROR_ROLE_NOT_FOUND_WITH_ID(id)
+        );
+        return;
+        }
+
+        ResponseHandler.sendSuccessResponse(res, role);
+    } catch (error) {
+        ResponseHandler.sendErrorResponse(
+        res,
+        StatusCodes.INTERNAL_SERVER_ERROR,
+        RoleController.ERROR_FAILED_TO_RETRIEVE_ROLE
+        );
+    }
     };
+
 
     // Add a new role
     public create = async (req: Request, res: Response): Promise<void> => {

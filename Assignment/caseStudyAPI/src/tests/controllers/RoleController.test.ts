@@ -1,370 +1,233 @@
 import { RoleController } from '../../controllers/RoleController';
 import { Role } from '../../entity/Role';
-import { Repository } from 'typeorm';
-import { StatusCodes } from 'http-status-codes';
-import { ResponseHandler } from '../../helper/ResponseHandler';
+import { Repository, DeleteResult } from 'typeorm';
 import { Request, Response } from 'express';
-import { DeleteResult } from 'typeorm'; 
-import * as classValidator from "class-validator";
-import { mock } from "jest-mock-extended"; 
+import { StatusCodes } from 'http-status-codes';
+import { mock } from 'jest-mock-extended';
+import * as classValidator from 'class-validator';
+import { ResponseHandler } from '../../helper/ResponseHandler';
+
+jest.mock('../../helper/ResponseHandler');
+
+jest.mock('class-validator', () => ({
+  ...jest.requireActual('class-validator'),
+  validate: jest.fn(),
+}));
 
 const VALIDATOR_CONSTRAINT_NAME_IS_REQUIRED = "Name is required";
 const VALIDATOR_CONSTRAINT_EMPTY_OR_WHITESPACE = "Name cannot be empty or whitespace";
 const VALIDATOR_CONSTRAINT_MAX_LENGTH_EXCEEDED = "Name must be 30 characters or less";
 
-const INVALID_ROLE_ID_NUMBER = 99;
-const INVALID_ROLE_ID_TYPE = "abc";
-const BLANK_ROLE_NAME = "";
-
-jest.mock('../helper/ResponseHandler');
-
-jest.mock('class-validator', () => ({
-    ...jest.requireActual('class-validator'),
-    validate: jest.fn(),
-}));
-
 describe('RoleController', () => {
-    function getValidManagerData() : Role {
-        let role = new Role();
-        role.id = 1;
-        role.name = 'manager';
-        return role;
-    }
+  const getValidManagerData = (): Role => {
+    const role = new Role();
+    role.id = 1;
+    role.name = 'manager';
+    return role;
+  };
 
-    const mockRequest = (params = {}, body = {}): Partial<Request> => ({
-        params,
-        body,
-    });
+  const mockRequest = (params = {}, body = {}): Partial<Request> => ({ params, body });
+  const mockResponse = (): Partial<Response> => ({});
 
-    const mockResponse = (): Partial<Response> => ({});
+  let roleController: RoleController;
+  let mockRoleRepo: jest.Mocked<Repository<Role>>;
 
-    let roleController: RoleController;
-    let mockRoleRepository: jest.Mocked<Repository<Role>>;
+  beforeEach(() => {
+    mockRoleRepo = mock<Repository<Role>>();
+    roleController = new RoleController();
+    (roleController as any).roleRepository = mockRoleRepo;
+    jest.clearAllMocks();
+  });
 
-    beforeEach(() => { 
-        mockRoleRepository = mock<Repository<Role>>();
+  it('getAll returns NO_CONTENT if no roles exist', async () => {
+    const req = mockRequest();
+    const res = mockResponse();
+    mockRoleRepo.find.mockResolvedValue([]);
+    await roleController.getAll(req as Request, res as Response);
+    expect(ResponseHandler.sendErrorResponse).toHaveBeenCalledWith(res, StatusCodes.NO_CONTENT);
+  });
 
-        // Inject the mocked repository into RoleController
-        roleController = new RoleController();
-        roleController['roleRepository'] = mockRoleRepository as Repository<Role>;
-    });
+  it('getAll returns all roles', async () => {
+    const req = mockRequest();
+    const res = mockResponse();
+    const roles = [getValidManagerData()];
+    mockRoleRepo.find.mockResolvedValue(roles);
+    await roleController.getAll(req as Request, res as Response);
+    expect(ResponseHandler.sendSuccessResponse).toHaveBeenCalledWith(res, roles);
+  });
 
-    afterEach(() => {
-        jest.clearAllMocks();
-    });
+  it('getAll returns INTERNAL_SERVER_ERROR if DB fails', async () => {
+    const req = mockRequest();
+    const res = mockResponse();
+    mockRoleRepo.find.mockRejectedValue(new Error('Database error'));
+    await roleController.getAll(req as Request, res as Response);
+    expect(ResponseHandler.sendErrorResponse).toHaveBeenCalledWith(
+      res,
+      StatusCodes.INTERNAL_SERVER_ERROR,
+      RoleController.ERROR_FAILED_TO_RETRIEVE_ROLES
+    );
+  });
 
-    it('getAll returns NO_CONTENT if no roles exist', async () => {
-        const req = mockRequest();
-        const res = mockResponse();
+  it('getById returns BAD_REQUEST if id is not a number', async () => {
+    const req = mockRequest({ id: 'abc' });
+    const res = mockResponse();
+    await roleController.getById(req as Request, res as Response);
+    expect(ResponseHandler.sendErrorResponse).toHaveBeenCalledWith(
+      res,
+      StatusCodes.BAD_REQUEST,
+      RoleController.ERROR_INVALID_ID_FORMAT
+    );
+  });
 
-        mockRoleRepository.find.mockResolvedValue([]); //Simulate no roles in the database
+  it('getById returns NOT_FOUND if no role exists', async () => {
+    const req = mockRequest({ id: '99' });
+    const res = mockResponse();
+    mockRoleRepo.findOne.mockResolvedValue(undefined);
+    await roleController.getById(req as Request, res as Response);
+    expect(ResponseHandler.sendErrorResponse).toHaveBeenCalledWith(
+      res,
+      StatusCodes.NOT_FOUND,
+      RoleController.ERROR_ROLE_NOT_FOUND_WITH_ID(99)
+    );
+  });
 
-        await roleController.getAll(req as Request, res as Response);
+  it('getById returns INTERNAL_SERVER_ERROR if DB fails', async () => {
+    const req = mockRequest({ id: '1' });
+    const res = mockResponse();
+    mockRoleRepo.findOne.mockRejectedValue(new Error('Database error'));
+    await roleController.getById(req as Request, res as Response);
+    expect(ResponseHandler.sendErrorResponse).toHaveBeenCalledWith(
+      res,
+      StatusCodes.INTERNAL_SERVER_ERROR,
+      RoleController.ERROR_FAILED_TO_RETRIEVE_ROLE
+    );
+  });
 
-        expect(ResponseHandler.sendErrorResponse).toHaveBeenCalledWith(res, StatusCodes.NO_CONTENT);
-    });
+  it('getById returns role if found', async () => {
+    const role = getValidManagerData();
+    const req = mockRequest({ id: role.id.toString() });
+    const res = mockResponse();
+    mockRoleRepo.findOne.mockResolvedValue(role);
+    await roleController.getById(req as Request, res as Response);
+    expect(ResponseHandler.sendSuccessResponse).toHaveBeenCalledWith(res, role);
+  });
 
-    it('getAll return all roles', async () => {
-        const validManagerDetails = getValidManagerData();
-        const req = mockRequest();
-        const res = mockResponse();
-        mockRoleRepository.find.mockResolvedValue([validManagerDetails]); //convert to an array (of one role)
+  it('create throws BAD_REQUEST if validation fails', async () => {
+    const req = mockRequest({}, {});
+    const res = mockResponse();
 
-        await roleController.getAll(req as Request, res as Response);
+    const expectedError =
+      `${VALIDATOR_CONSTRAINT_NAME_IS_REQUIRED},` +
+      `${VALIDATOR_CONSTRAINT_EMPTY_OR_WHITESPACE},` +
+      `${VALIDATOR_CONSTRAINT_MAX_LENGTH_EXCEEDED}`;
 
-        expect(mockRoleRepository.find).toHaveBeenCalled();
-        expect(ResponseHandler.sendSuccessResponse).toHaveBeenCalledWith(res, 
-                                                                            [validManagerDetails]);
-    });
-
-    it('getAll returns INTERNAL_SERVER_ERROR if server fails to retrieve roles', async () => {
-        const req = mockRequest();
-        const res = mockResponse();
-        //Mock a database error
-        mockRoleRepository.find.mockRejectedValue(new Error("Database connection error"));
-    
-        await roleController.getAll(req as Request, res as Response);
-    
-        expect(mockRoleRepository.find).toHaveBeenCalled();
-        expect(ResponseHandler.sendErrorResponse).toHaveBeenCalledWith(res, 
-                                                                        StatusCodes.INTERNAL_SERVER_ERROR, 
-                                                                        RoleController.ERROR_FAILED_TO_RETRIEVE_ROLES);
-    });
-
-    it('getById returns an error if an invalid id is supplied', async () => {
-        const req = mockRequest({ id: INVALID_ROLE_ID_TYPE });
-        const res = mockResponse();
-
-        await roleController.getById(req as Request, res as Response);
-
-        expect(ResponseHandler.sendErrorResponse).toHaveBeenCalledWith(res, 
-                                                                        StatusCodes.BAD_REQUEST, 
-                                                                        RoleController.ERROR_INVALID_ID_FORMAT);
-    });
-
-    it('getById returns NOT_FOUND if the role id does not exist', async () => {
-        const req = mockRequest({ id: INVALID_ROLE_ID_NUMBER });
-        const res = mockResponse();
-
-        await roleController.getById(req as Request, res as Response);
-
-        expect(ResponseHandler.sendErrorResponse).toHaveBeenCalledWith(res, 
-                                                                        StatusCodes.NOT_FOUND, 
-                                                                        RoleController.ERROR_ROLE_NOT_FOUND_WITH_ID(INVALID_ROLE_ID_NUMBER));
-    });
-    
-    it('getById returns a role if a valid id is supplied', async () => {
-        const validManagerDetails = getValidManagerData();
-        const req = mockRequest({ id: validManagerDetails.id });
-        const res = mockResponse();
-
-        mockRoleRepository.findOne.mockResolvedValue(validManagerDetails);
-
-        await roleController.getById(req as Request, res as Response);
-
-        expect(mockRoleRepository.findOne).toHaveBeenCalledWith({ where: { id: validManagerDetails.id } });
-        expect(ResponseHandler.sendSuccessResponse).toHaveBeenCalledWith(res, 
-                                                                        validManagerDetails);
-    });
-
-    it('getById returns INTERNAL_SERVER_ERROR if server fails to retrieve role by id', async () => {
-        const validManagerDetails = getValidManagerData();
-        const req = mockRequest({ id: validManagerDetails.id });
-        const res = mockResponse();
-        //Mock a database error
-        mockRoleRepository.findOne.mockRejectedValue(new Error("Database connection error"));
-    
-        await roleController.getById(req as Request, res as Response);
-    
-        expect(mockRoleRepository.findOne).toHaveBeenCalled();
-        expect(ResponseHandler.sendErrorResponse).toHaveBeenCalledWith(res, 
-                                                                        StatusCodes.INTERNAL_SERVER_ERROR, 
-                                                                        RoleController.ERROR_FAILED_TO_RETRIEVE_ROLE);
-    });
-
-    it('create will return BAD_REQUEST if the role name is missing', async () => {
-        const req = mockRequest(); //Empty request = no name in body
-        const res = mockResponse();
-        //controller validate returns Name is required,Name cannot be empty or whitespace,Name must be 30 characters or less
-        const EXPECTED_ERROR_MESSAGE = 
-            `${VALIDATOR_CONSTRAINT_NAME_IS_REQUIRED},${VALIDATOR_CONSTRAINT_EMPTY_OR_WHITESPACE},${VALIDATOR_CONSTRAINT_MAX_LENGTH_EXCEEDED}`;
-
-        jest.spyOn(classValidator, 'validate').mockResolvedValue([
-        {
-            property: 'name',
-            constraints: {
-                isNotEmpty: VALIDATOR_CONSTRAINT_NAME_IS_REQUIRED, 
-                Matches: VALIDATOR_CONSTRAINT_EMPTY_OR_WHITESPACE,
-                MaxLength: VALIDATOR_CONSTRAINT_MAX_LENGTH_EXCEEDED
-            },
+    jest.spyOn(classValidator, 'validate').mockResolvedValue([
+      {
+        property: 'name',
+        constraints: {
+          isNotEmpty: VALIDATOR_CONSTRAINT_NAME_IS_REQUIRED,
+          Matches: VALIDATOR_CONSTRAINT_EMPTY_OR_WHITESPACE,
+          MaxLength: VALIDATOR_CONSTRAINT_MAX_LENGTH_EXCEEDED,
         },
+      },
     ]);
 
-        await roleController.create(req as Request, res as Response);
+    await expect(roleController.create(req as Request, res as Response)).rejects.toThrow(expectedError);
+  });
 
-        expect(ResponseHandler.sendErrorResponse).toHaveBeenCalledWith(res, 
-                                                                        StatusCodes.BAD_REQUEST, 
-                                                                        EXPECTED_ERROR_MESSAGE);
-    });
+  it('create returns CREATED if valid role', async () => {
+    const role = getValidManagerData();
+    const req = mockRequest({}, { name: role.name });
+    const res = mockResponse();
 
-    //add test for role name is not a string
-    it('create will return BAD_REQUEST if the role name is not a string', async () => {
-        const req = mockRequest(); //Empty request = no name in body
-        const res = mockResponse();
-   
-        jest.spyOn(classValidator, 'validate').mockResolvedValue([
-            {
-                property: 'name',
-                constraints: {
-                    Matches: VALIDATOR_CONSTRAINT_EMPTY_OR_WHITESPACE,
-                },
-            },
-        ]);
+    mockRoleRepo.save.mockResolvedValue(role);
+    jest.spyOn(classValidator, 'validate').mockResolvedValue([]);
 
-        await roleController.create(req as Request, res as Response);
+    await roleController.create(req as Request, res as Response);
 
-        expect(ResponseHandler.sendErrorResponse).toHaveBeenCalledWith(res, 
-                                                                        StatusCodes.BAD_REQUEST, 
-                                                                        VALIDATOR_CONSTRAINT_EMPTY_OR_WHITESPACE);
+    expect(ResponseHandler.sendSuccessResponse).toHaveBeenCalledWith(res, role, StatusCodes.CREATED);
+  });
 
-    });
- 
-    it('create will return BAD_REQUEST if the role name is longer than 30 chars', async () => {
-        let nameTooLong = 'a'.repeat(31); 
-        const req = mockRequest({}, { name: nameTooLong }); //Empty request = no name in body
-        const res = mockResponse();
+  it('delete throws if id not provided', async () => {
+    const req = mockRequest(); // no id
+    const res = mockResponse();
+    await expect(roleController.delete(req as Request, res as Response)).rejects.toThrow(
+      RoleController.ERROR_NO_ID_PROVIDED
+    );
+  });
 
-        jest.spyOn(classValidator, 'validate').mockResolvedValue([
-            {
-                property: 'name',
-                constraints: {
-                    Matches: VALIDATOR_CONSTRAINT_MAX_LENGTH_EXCEEDED,
-                },
-            },
-        ]);
+  it('delete throws if role not found', async () => {
+    const req = mockRequest({ id: '99' });
+    const res = mockResponse();
+    mockRoleRepo.delete.mockResolvedValue({ affected: 0 } as DeleteResult);
+    await expect(roleController.delete(req as Request, res as Response)).rejects.toThrow(
+      RoleController.ERROR_ROLE_NOT_FOUND_FOR_DELETION
+    );
+  });
 
-        await roleController.create(req as Request, res as Response);
+  it('delete returns success if role deleted', async () => {
+    const req = mockRequest({ id: '1' });
+    const res = mockResponse();
+    mockRoleRepo.delete.mockResolvedValue({ affected: 1 } as DeleteResult);
+    await roleController.delete(req as Request, res as Response);
+    expect(ResponseHandler.sendSuccessResponse).toHaveBeenCalledWith(res, 'Role deleted');
+  });
 
-        expect(ResponseHandler.sendErrorResponse).toHaveBeenCalledWith(res, 
-                                                                        StatusCodes.BAD_REQUEST, 
-                                                                        VALIDATOR_CONSTRAINT_MAX_LENGTH_EXCEEDED);
-    });
+  it('update throws if no id provided', async () => {
+    const req = mockRequest({}, { name: 'manager' });
+    const res = mockResponse();
+    await expect(roleController.update(req as Request, res as Response)).rejects.toThrow(
+      RoleController.ERROR_NO_ID_PROVIDED
+    );
+  });
 
-    it('create a new role with valid data', async () => {
-        const validManagerDetails = getValidManagerData();
-        const req = mockRequest({}, { name: validManagerDetails.name });
-        const res = mockResponse();
+  it('update throws if role not found', async () => {
+    const req = mockRequest({}, { id: 1, name: 'manager' });
+    const res = mockResponse();
+    mockRoleRepo.findOneBy.mockResolvedValue(null);
+    await expect(roleController.update(req as Request, res as Response)).rejects.toThrow(
+      RoleController.ERROR_ROLE_NOT_FOUND
+    );
+  });
 
-        mockRoleRepository.save.mockResolvedValue(validManagerDetails);
-        jest.spyOn(classValidator, 'validate').mockResolvedValue([]);
+  it('update throws if validation fails', async () => {
+    const role = getValidManagerData();
+    const req = mockRequest({}, { id: role.id, name: '' });
+    const res = mockResponse();
+    mockRoleRepo.findOneBy.mockResolvedValue(role);
 
-        await roleController.create(req as Request, res as Response);
+    const expectedError =
+      `${VALIDATOR_CONSTRAINT_NAME_IS_REQUIRED},` +
+      `${VALIDATOR_CONSTRAINT_EMPTY_OR_WHITESPACE},` +
+      `${VALIDATOR_CONSTRAINT_MAX_LENGTH_EXCEEDED}`;
 
-        expect(mockRoleRepository.save).toHaveBeenCalledWith(expect.objectContaining({ name: validManagerDetails.name }));
-        expect(ResponseHandler.sendSuccessResponse).toHaveBeenCalledWith(res, 
-                                                                            validManagerDetails, 
-                                                                            StatusCodes.CREATED);
-    });
-    
-    it('delete will return NO_ID_PROVIDED if no id is provided', async () => {
-        const req = mockRequest(); //Empty request = no param for id
-        const res = mockResponse();
-    
-        await roleController.delete(req as Request, res as Response);
+    jest.spyOn(classValidator, 'validate').mockResolvedValue([
+      {
+        property: 'name',
+        constraints: {
+          isNotEmpty: VALIDATOR_CONSTRAINT_NAME_IS_REQUIRED,
+          Matches: VALIDATOR_CONSTRAINT_EMPTY_OR_WHITESPACE,
+          MaxLength: VALIDATOR_CONSTRAINT_MAX_LENGTH_EXCEEDED,
+        },
+      },
+    ]);
 
-        expect(ResponseHandler.sendErrorResponse).toHaveBeenCalledWith(res, 
-                                                                        StatusCodes.NOT_FOUND, 
-                                                                        RoleController.ERROR_NO_ID_PROVIDED);
-    });
+    await expect(roleController.update(req as Request, res as Response)).rejects.toThrow(expectedError);
+  });
 
-    it('delete will return NOT_FOUND if the role id does not exist', async () => {
-        const req = mockRequest({ id: INVALID_ROLE_ID_NUMBER });
-        const res = mockResponse();
-    
-        //Simulate that no role was deleted
-        const deleteResult: DeleteResult = { affected: 0 } as DeleteResult; 
-        mockRoleRepository.delete.mockResolvedValue(deleteResult); 
-    
-        await roleController.delete(req as Request, res as Response);
-    
-        expect(mockRoleRepository.delete).toHaveBeenCalledWith(INVALID_ROLE_ID_NUMBER);
-        expect(ResponseHandler.sendErrorResponse).toHaveBeenCalledWith(res, 
-                                                                        StatusCodes.NOT_FOUND, 
-                                                                        RoleController.ERROR_ROLE_NOT_FOUND_FOR_DELETION);
-    });
-    
-    it('delete will return SUCCESS if the role is successfully deleted', async () => {
-        const validManagerDetails = getValidManagerData();
-        const req = mockRequest({ id: validManagerDetails.id }); //id that exists
-        const res = mockResponse();
-    
-        //Simulate a deletion
-        const deleteResult: DeleteResult = { affected: 1 } as DeleteResult; 
-        mockRoleRepository.delete.mockResolvedValue(deleteResult); 
-    
-        await roleController.delete(req as Request, res as Response);
-    
-        expect(mockRoleRepository.delete).toHaveBeenCalledWith(validManagerDetails.id);
-        expect(ResponseHandler.sendSuccessResponse).toHaveBeenCalledWith(res, "Role deleted");
-    });    
+  it('update saves and returns role if valid', async () => {
+    const updatedRole = getValidManagerData();
+    const originalRole = { ...updatedRole, name: 'old' };
 
-    it('update returns a BAD_REQUEST if no id is provided', async () => {
-        const validManagerDetails = getValidManagerData();
-        const req = mockRequest({}, { name:validManagerDetails.name }); //Invalid/no id
-        const res = mockResponse();
-       
-        await roleController.update(req as Request, res as Response);
+    const req = mockRequest({}, updatedRole);
+    const res = mockResponse();
 
-        expect(ResponseHandler.sendErrorResponse).toHaveBeenCalledWith(res, 
-                                                                        StatusCodes.BAD_REQUEST, 
-                                                                        RoleController.ERROR_NO_ID_PROVIDED);
-    });
+    mockRoleRepo.findOneBy.mockResolvedValue(originalRole);
+    mockRoleRepo.save.mockResolvedValue(updatedRole);
+    jest.spyOn(classValidator, 'validate').mockResolvedValue([]);
 
-    it('update returns a BAD_REQUEST if id provided does not exist', async () => {
-        const validManagerDetails = getValidManagerData();
-        const req = mockRequest({}, {id: validManagerDetails.id, name: validManagerDetails.name}); 
-        const res = mockResponse();
+    await roleController.update(req as Request, res as Response);
 
-        //Mock findOneBy to return null (not found)
-        mockRoleRepository.findOneBy.mockResolvedValue(null);
-
-        await roleController.update(req as Request, res as Response);
-
-        expect(mockRoleRepository.findOneBy).toHaveBeenCalledWith({id: validManagerDetails.id});
-        expect(ResponseHandler.sendErrorResponse).toHaveBeenCalledWith(res, 
-                                                                        StatusCodes.BAD_REQUEST, 
-                                                                        RoleController.ERROR_ROLE_NOT_FOUND);
-    });
-
-    it('update will return a BAD_REQUEST if the name does not exist/blank', async () => {
-        const validManagerDetails = getValidManagerData();
-        const req = mockRequest({},  {id: validManagerDetails.id, name: BLANK_ROLE_NAME}); //Missing a valid name
-        const res = mockResponse();
-
-        //Mock findOneBy to return a valid role for id:1, ready to edit 
-        mockRoleRepository.findOneBy.mockResolvedValue(validManagerDetails);
-
-        //controller validate returns Name is required,Name cannot be empty or whitespace,Name must be 30 characters or less
-        const EXPECTED_ERROR_MESSAGE = 
-        `${VALIDATOR_CONSTRAINT_NAME_IS_REQUIRED},${VALIDATOR_CONSTRAINT_EMPTY_OR_WHITESPACE},${VALIDATOR_CONSTRAINT_MAX_LENGTH_EXCEEDED}`;
-        jest.spyOn(classValidator, 'validate').mockResolvedValue([
-            {
-                property: 'name',
-                constraints: {
-                    isNotEmpty: VALIDATOR_CONSTRAINT_NAME_IS_REQUIRED, 
-                    Matches: VALIDATOR_CONSTRAINT_EMPTY_OR_WHITESPACE,
-                    MaxLength: VALIDATOR_CONSTRAINT_MAX_LENGTH_EXCEEDED
-                },
-            },
-        ]);
-
-        await roleController.update(req as Request, res as Response);
-
-        expect(mockRoleRepository.findOneBy).toHaveBeenCalledWith({id: validManagerDetails.id});
-        expect(ResponseHandler.sendErrorResponse).toHaveBeenCalledWith(res, 
-                                                                        StatusCodes.BAD_REQUEST, 
-                                                                        EXPECTED_ERROR_MESSAGE);
-    });
-
-//Similar to above for tests to check decorator constraint Matches and MaxLength
-
-    it('update will return a BAD_REQUEST if the role does not exist', async () => {
-        const req = mockRequest({}, { id: INVALID_ROLE_ID_NUMBER, name: 'amended name' });//invalid id
-        const res = mockResponse();
-
-        //Mock findOneBy to return null (not found)
-        mockRoleRepository.findOneBy.mockResolvedValue(null);
-
-        await roleController.update(req as Request, res as Response);
-
-        expect(mockRoleRepository.findOneBy).toHaveBeenCalledWith( {id: INVALID_ROLE_ID_NUMBER} );
-        expect(ResponseHandler.sendErrorResponse).toHaveBeenCalledWith(res, 
-                                                                        StatusCodes.BAD_REQUEST, 
-                                                                        RoleController.ERROR_ROLE_NOT_FOUND);
-    });
-
-    it('update with valid details', async () => {
-        const validManagerDetails = getValidManagerData();
-        
-        const roleDetailsToChange = new Role();
-        roleDetailsToChange.id = validManagerDetails.id;
-        roleDetailsToChange.name = 'old role'; // Previous role name
-        // Mock the findOneBy to return an existing role
-        mockRoleRepository.findOneBy.mockResolvedValue(roleDetailsToChange); 
-    
-        //Body data for update = existing id but new role name (not 'old role')
-        const req = mockRequest({}, validManagerDetails);//remove outer Role type from object {...validManagerDetails});
-        const res = mockResponse();
-
-        //Do this otherwise role will be undefined after the save
-        mockRoleRepository.save.mockResolvedValue(validManagerDetails);
-        jest.spyOn(classValidator, 'validate').mockResolvedValue([]);
-       
-        await roleController.update(req as Request, res as Response);
-      
-        expect(mockRoleRepository.findOneBy).toHaveBeenCalledWith({id: validManagerDetails.id});
-        expect(mockRoleRepository.save).toHaveBeenCalledWith( {id: validManagerDetails.id, name: validManagerDetails.name} );
-        expect(ResponseHandler.sendSuccessResponse).toHaveBeenCalledWith(res, 
-                                                                        validManagerDetails);
-    });
+    expect(ResponseHandler.sendSuccessResponse).toHaveBeenCalledWith(res, updatedRole);
+  });
 });
