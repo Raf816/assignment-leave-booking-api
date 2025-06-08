@@ -8,6 +8,7 @@ import { Request, Response } from 'express';
 import * as classValidator from "class-validator";
 import * as classTransformer from "class-transformer";
 import { mock } from "jest-mock-extended";
+import { ErrorMessages } from '../../constants/ErrorMessages';
 
 jest.mock('../../helper/ResponseHandler');
 
@@ -213,7 +214,7 @@ it('update returns BAD_REQUEST if no ID provided', async () => {
   try {
     await userController.update(req as Request, res as Response);
   } catch (err: any) {
-    expect(err.message).toBe(UserController.ERROR_NO_USER_ID_PROVIDED);
+    expect(err.message).toBe(ErrorMessages.NO_USER_ID_PROVIDED);
   }
 });
 it('delete returns NOT_FOUND if user not found', async () => {
@@ -225,7 +226,7 @@ it('delete returns NOT_FOUND if user not found', async () => {
   try {
     await userController.delete(req as Request, res as Response);
   } catch (err: any) {
-    expect(err.message).toBe(UserController.ERROR_USER_NOT_FOUND_FOR_DELETION);
+    expect(err.message).toBe(ErrorMessages.USER_NOT_FOUND_FOR_DELETION);
   }
 });
 

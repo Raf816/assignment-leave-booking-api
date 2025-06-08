@@ -7,6 +7,7 @@ import { IAuthenticatedJWTRequest } from '../../types/IAuthenticatedJWTRequest';
 import { StatusCodes } from 'http-status-codes';
 import { ResponseHandler } from '../../helper/ResponseHandler';
 import { mock } from 'jest-mock-extended';
+import { ErrorMessages } from '../../constants/ErrorMessages';
 
 jest.mock('../../helper/ResponseHandler');
 jest.mock('class-validator', () => ({
@@ -95,7 +96,7 @@ describe('LeaveRequestController', () => {
     expect(ResponseHandler.sendErrorResponse).toHaveBeenCalledWith(
       res,
       StatusCodes.BAD_REQUEST,
-      'Invalid Leave Request ID'
+      'Invalid leave request ID' 
     );
   });
 
@@ -261,35 +262,34 @@ describe('LeaveRequestController', () => {
     expect(ResponseHandler.sendSuccessResponse).toHaveBeenCalled();
   });
 
-  it('approveLeave: returns BAD_REQUEST if insufficient balance', async () => {
-    const user = new User();
-    user.id = 1;
-    user.annualLeaveBalance = 1;
+it('approveLeave: returns BAD_REQUEST if insufficient balance', async () => {
+  const user = new User();
+  user.id = 1;
+  user.annualLeaveBalance = 1;
 
-    const leave = new LeaveRequest();
-    leave.id = 1;
-    leave.startDate = '2025-08-01';
-    leave.endDate = '2025-08-03';
-    leave.status = LeaveStatus.PENDING;
-    leave.user = user;
+  const leave = new LeaveRequest();
+  leave.id = 1;
+  leave.startDate = '2025-08-01';
+  leave.endDate = '2025-08-03';
+  leave.status = LeaveStatus.PENDING;
+  leave.user = user;
 
-    const req = mockRequest({
-      signedInUser: { email: 'admin@abc.com' },
-      params: { id: '1' },
-    });
-    const res = mockResponse();
-
-    mockLeaveRepo.findOne.mockResolvedValue(leave);
-    mockUserRepo.findOneBy.mockResolvedValue(user);
-
-    await controller.approveLeave(req, res);
-
-    expect(ResponseHandler.sendErrorResponse).toHaveBeenCalledWith(
-      res,
-      StatusCodes.BAD_REQUEST,
-      'Insufficient leave balance to approve'
-    );
+  const req = mockRequest({
+    signedInUser: { email: 'admin@abc.com' },
+    params: { id: '1' },
   });
+  const res = mockResponse();
+
+  mockLeaveRepo.findOne.mockResolvedValue(leave);
+  mockUserRepo.findOneBy.mockResolvedValue(user); 
+
+  await controller.approveLeave(req, res);
+
+  expect(ResponseHandler.sendErrorResponse).toHaveBeenCalledWith(
+    res,
+    StatusCodes.BAD_REQUEST,ErrorMessages.INSUFFICIENT_BALANCE
+  );
+});
 
   // --- Additional Coverage: New Tests ---
 

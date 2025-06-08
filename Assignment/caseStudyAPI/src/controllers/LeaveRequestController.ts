@@ -172,7 +172,7 @@ export class LeaveRequestController implements ILeaveRequestController {
       }
   
       if (user.annualLeaveBalance < totalDays) {
-        ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, ErrorMessages.USER_NOT_FOUND);
+        ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, ErrorMessages.INSUFFICIENT_BALANCE);
         return;
       }
   

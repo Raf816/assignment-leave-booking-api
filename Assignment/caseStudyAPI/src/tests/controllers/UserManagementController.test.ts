@@ -9,7 +9,20 @@ import { StatusCodes } from 'http-status-codes';
 import { mock } from 'jest-mock-extended';
 
 jest.mock('../../helper/ResponseHandler');
-jest.mock('../../helper/Logger');
+
+jest.mock('../../helper/Logger', () => ({
+  Logger: {
+    info: jest.fn(),
+    error: jest.fn(),
+  }
+}));
+
+jest.mock('../../helper/ValidationUtils', () => ({
+  ValidationUtil: {
+    validateOrThrow: jest.fn().mockResolvedValue(undefined), 
+  }
+}));
+
 
 describe('UserManagementController', () => {
   let controller: UserManagementController;
