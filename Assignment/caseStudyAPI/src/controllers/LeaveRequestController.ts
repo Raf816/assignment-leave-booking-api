@@ -10,8 +10,9 @@ import { ResponseHandler } from '../helper/ResponseHandler';
 import { StatusCodes } from 'http-status-codes';
 import { In } from 'typeorm';
 import { UserManagement } from '../entity/UserManagement';
+import { ILeaveRequestController } from '../interfaces/ILeaveRequestController';
 
-export class LeaveRequestController {
+export class LeaveRequestController implements ILeaveRequestController {
   async requestLeave(req: IAuthenticatedJWTRequest, res: Response): Promise<void> {
     try {
       const userRepository = AppDataSource.getRepository(User);
