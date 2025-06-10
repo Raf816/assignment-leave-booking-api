@@ -7,7 +7,7 @@ import { PasswordHandler } from '../helper/PasswordHandler';
 import { UserDTOToken } from './UserDTOToken'
 import jwt from 'jsonwebtoken';
 import { AppError } from "../helper/AppError";
-import { ILoginController } from './ILoginController';
+import { ILoginController } from '../interfaces/ILoginController';
 
 
 export class LoginController implements ILoginController {
