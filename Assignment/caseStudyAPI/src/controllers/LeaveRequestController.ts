@@ -15,43 +15,19 @@ import { ValidationUtil } from '../helper/ValidationUtils';
 import { ErrorMessages } from '../constants/ErrorMessages';
 
 export class LeaveRequestController implements ILeaveRequestController {
+
   async requestLeave(req: IAuthenticatedJWTRequest, res: Response): Promise<void> {
     try {
-      const userRepository = AppDataSource.getRepository(User);
-      const leaveRepository = AppDataSource.getRepository(LeaveRequest);
-      
+      const user = await this.getUserFromToken(req, res);
+      if (!user) return;
+
       const { startDate, endDate, leaveType, reason } = req.body;
-
-      const emailFromToken = req.signedInUser?.email;
-      if (!emailFromToken) {
-        Logger.error("Missing email in signedInUser");
-        ResponseHandler.sendErrorResponse(res, StatusCodes.UNAUTHORIZED, ErrorMessages.UNAUTHORISED_USER);
-        return;
-      }
-
-      const user = await userRepository.findOne({ where: { email: emailFromToken } });
-      if (!user) {
-        Logger.error(`User not found: ${emailFromToken}`);
-        ResponseHandler.sendErrorResponse(res, StatusCodes.NOT_FOUND, ErrorMessages.USER_NOT_FOUND);
-        return;
-      }
-
       const start = new Date(startDate);
       const end = new Date(endDate);
 
-      if (end <= start) {
-        Logger.warn("End date before or equal to start date");
-        ResponseHandler.sendErrorResponse(res,StatusCodes.BAD_REQUEST,`End date of ${endDate} is before the start date of ${startDate}`);
-        return;
-      }
+      if (!this.validateDateRange(start, end, res)) return;
 
-      const leave = new LeaveRequest();
-      leave.user = user;
-      leave.startDate = startDate;
-      leave.endDate = endDate;
-      leave.status = LeaveStatus.PENDING;
-      leave.leaveType = leaveType || "Annual Leave";
-      leave.reason = reason;
+      const leave = this.createLeaveRequest(user, startDate, endDate, leaveType, reason);
 
       try {
         await ValidationUtil.validateOrThrow(leave);
@@ -61,38 +37,14 @@ export class LeaveRequestController implements ILeaveRequestController {
         return;
       }
 
-      const existingRequests = await leaveRepository.find({
-        where: {
-          user: { id: user.id },
-          status: In([LeaveStatus.PENDING, LeaveStatus.APPROVED]),
-        },
-      });
+      if (await this.hasOverlappingLeave(user.id, start, end, res)) return;
 
-      const overlap = existingRequests.some((r) => {
-        const existingStart = new Date(r.startDate);
-        const existingEnd = new Date(r.endDate);
-        const overlaps = start <= existingEnd && end >= existingStart;
-        if (overlaps) {
-          Logger.warn(`Overlap with leave from ${existingStart.toDateString()} to ${existingEnd.toDateString()}`);
-        }
-        return overlaps;
-      });
+      const totalRequestedDays = this.calculateLeaveDays(start, end);
+      if (!this.hasSufficientBalance(user.annualLeaveBalance, totalRequestedDays, res)) return;
 
-      if (overlap) {
-        ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, ErrorMessages.OVERLAPPING_LEAVE);
-        return;
-      }
+      const savedLeave = await AppDataSource.getRepository(LeaveRequest).save(leave);
 
-      const totalRequestedDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-      if (totalRequestedDays > user.annualLeaveBalance) {
-        Logger.warn(`Requested ${totalRequestedDays} days, but only ${user.annualLeaveBalance} available`);
-        ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, ErrorMessages.LEAVE_EXCEEDS_BALANCE);
-        return;
-      }
-
-      const savedLeave = await leaveRepository.save(leave);
-      Logger.info(`Leave request submitted by ${user.email} for ${totalRequestedDays} days`);
-
+      Logger.info(`Leave request submitted by ${user.email} for ${totalRequestedDays} days. Reason: ${reason || "N/A"}`);
       ResponseHandler.sendSuccessResponse(
         res,
         {
@@ -106,6 +58,98 @@ export class LeaveRequestController implements ILeaveRequestController {
       ResponseHandler.sendErrorResponse(res, StatusCodes.INTERNAL_SERVER_ERROR, ErrorMessages.INTERNAL_ERROR);
     }
   }
+
+  // async requestLeave(req: IAuthenticatedJWTRequest, res: Response): Promise<void> {
+  //   try {
+  //     const userRepository = AppDataSource.getRepository(User);
+  //     const leaveRepository = AppDataSource.getRepository(LeaveRequest);
+      
+  //     const { startDate, endDate, leaveType, reason } = req.body;
+
+  //     const emailFromToken = req.signedInUser?.email;
+  //     if (!emailFromToken) {
+  //       Logger.error("Missing email in signedInUser");
+  //       ResponseHandler.sendErrorResponse(res, StatusCodes.UNAUTHORIZED, ErrorMessages.UNAUTHORISED_USER);
+  //       return;
+  //     }
+
+  //     const user = await userRepository.findOne({ where: { email: emailFromToken } });
+  //     if (!user) {
+  //       Logger.error(`User not found: ${emailFromToken}`);
+  //       ResponseHandler.sendErrorResponse(res, StatusCodes.NOT_FOUND, ErrorMessages.USER_NOT_FOUND);
+  //       return;
+  //     }
+
+  //     const start = new Date(startDate);
+  //     const end = new Date(endDate);
+
+  //     if (end <= start) {
+  //       Logger.warn("End date before or equal to start date");
+  //       ResponseHandler.sendErrorResponse(res,StatusCodes.BAD_REQUEST,`End date of ${endDate} is before the start date of ${startDate}`);
+  //       return;
+  //     }
+
+  //     const leave = new LeaveRequest();
+  //     leave.user = user;
+  //     leave.startDate = startDate;
+  //     leave.endDate = endDate;
+  //     leave.status = LeaveStatus.PENDING;
+  //     leave.leaveType = leaveType || "Annual Leave";
+  //     leave.reason = reason;
+
+  //     try {
+  //       await ValidationUtil.validateOrThrow(leave);
+  //     } catch (err: any) {
+  //       Logger.warn("Validation failed:", err.message);
+  //       ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, err.message);
+  //       return;
+  //     }
+
+  //     const existingRequests = await leaveRepository.find({
+  //       where: {
+  //         user: { id: user.id },
+  //         status: In([LeaveStatus.PENDING, LeaveStatus.APPROVED]),
+  //       },
+  //     });
+
+  //     const overlap = existingRequests.some((r) => {
+  //       const existingStart = new Date(r.startDate);
+  //       const existingEnd = new Date(r.endDate);
+  //       const overlaps = start <= existingEnd && end >= existingStart;
+  //       if (overlaps) {
+  //         Logger.warn(`Overlap with leave from ${existingStart.toDateString()} to ${existingEnd.toDateString()}`);
+  //       }
+  //       return overlaps;
+  //     });
+
+  //     if (overlap) {
+  //       ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, ErrorMessages.OVERLAPPING_LEAVE);
+  //       return;
+  //     }
+
+  //     const totalRequestedDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  //     if (totalRequestedDays > user.annualLeaveBalance) {
+  //       Logger.warn(`Requested ${totalRequestedDays} days, but only ${user.annualLeaveBalance} available`);
+  //       ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, ErrorMessages.LEAVE_EXCEEDS_BALANCE);
+  //       return;
+  //     }
+
+  //     const savedLeave = await leaveRepository.save(leave);
+  //     Logger.info(`Leave request submitted by ${user.email} for ${totalRequestedDays} days`);
+
+  //     ResponseHandler.sendSuccessResponse(
+  //       res,
+  //       {
+  //         ...instanceToPlain(savedLeave),
+  //         remainingBalance: user.annualLeaveBalance - totalRequestedDays,
+  //       },
+  //       StatusCodes.CREATED
+  //     );
+  //   } catch (err) {
+  //     Logger.error("Unhandled error in requestLeave", err);
+  //     ResponseHandler.sendErrorResponse(res, StatusCodes.INTERNAL_SERVER_ERROR, ErrorMessages.INTERNAL_ERROR);
+  //   }
+  // }
 
   async getMyRequests(req: IAuthenticatedJWTRequest, res: Response): Promise<void> {
     try {
@@ -606,4 +650,83 @@ export class LeaveRequestController implements ILeaveRequestController {
       ResponseHandler.sendErrorResponse(res, StatusCodes.INTERNAL_SERVER_ERROR, "Failed to retrieve leave requests");
     }
   }
+
+  //private methods for requestLeave()
+
+  private async getUserFromToken(req: IAuthenticatedJWTRequest, res: Response): Promise<User | null> {
+    const email = req.signedInUser?.email;
+    if (!email) {
+      Logger.error("Missing email in signedInUser");
+      ResponseHandler.sendErrorResponse(res, StatusCodes.UNAUTHORIZED, ErrorMessages.UNAUTHORISED_USER);
+      return null;
+    }
+
+    const user = await AppDataSource.getRepository(User).findOne({ where: { email } });
+    if (!user) {
+      Logger.error(`User not found: ${email}`);
+      ResponseHandler.sendErrorResponse(res, StatusCodes.NOT_FOUND, ErrorMessages.USER_NOT_FOUND);
+      return null;
+    }
+
+    return user;
+  }
+
+    private validateDateRange(start: Date, end: Date, res: Response): boolean {
+    if (end <= start) {
+      Logger.warn("End date before or equal to start date");
+      ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, ErrorMessages.INVALID_DATE_RANGE(start.toISOString(), end.toISOString()));
+      return false;
+    }
+    return true;
+  }
+
+    private createLeaveRequest(user: User, start: string, end: string, type: string, reason?: string): LeaveRequest {
+    const leave = new LeaveRequest();
+    leave.user = user;
+    leave.startDate = start;
+    leave.endDate = end;
+    leave.status = LeaveStatus.PENDING;
+    leave.leaveType = type || "Annual Leave";
+    leave.reason = reason;
+    return leave;
+  }
+
+  private async hasOverlappingLeave(userId: number, start: Date, end: Date, res: Response): Promise<boolean> {
+    const repo = AppDataSource.getRepository(LeaveRequest);
+    const existing = await repo.find({
+      where: {
+        user: { id: userId },
+        status: In([LeaveStatus.PENDING, LeaveStatus.APPROVED]),
+      },
+    });
+
+    const overlap = existing.some(r => {
+      const existingStart = new Date(r.startDate);
+      const existingEnd = new Date(r.endDate);
+      const isOverlap = start <= existingEnd && end >= existingStart;
+      if (isOverlap) Logger.warn(`Overlap with leave from ${existingStart} to ${existingEnd}`);
+      return isOverlap;
+    });
+
+    if (overlap) {
+      ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, ErrorMessages.OVERLAPPING_LEAVE);
+      return true;
+    }
+
+    return false;
+  }
+
+  private calculateLeaveDays(start: Date, end: Date): number {
+    return Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  }
+
+  private hasSufficientBalance(balance: number, requested: number, res: Response): boolean {
+    if (requested > balance) {
+      Logger.warn(`Requested ${requested} days, but only ${balance} available`);
+      ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, ErrorMessages.LEAVE_EXCEEDS_BALANCE);
+      return false;
+    }
+    return true;
+  }
+
 }
