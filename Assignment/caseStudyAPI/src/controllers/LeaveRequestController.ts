@@ -382,6 +382,7 @@ export class LeaveRequestController implements ILeaveRequestController {
     }
   }
   
+  //for staff
   async getRemainingLeave(req: IAuthenticatedJWTRequest, res: Response): Promise<void> {
     try {
       const userId = parseInt(req.params.userId);
@@ -427,6 +428,7 @@ export class LeaveRequestController implements ILeaveRequestController {
     }
   }
 
+  //manager/admins
   async getLeaveBalance(req: IAuthenticatedJWTRequest, res: Response): Promise<void> {
     try {
       const userRepo = AppDataSource.getRepository(User);
