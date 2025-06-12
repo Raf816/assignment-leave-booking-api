@@ -44,7 +44,7 @@ export class LeaveRequestController implements ILeaveRequestController {
 
       const savedLeave = await AppDataSource.getRepository(LeaveRequest).save(leave);
 
-      Logger.info(`Leave request submitted by ${user.email} for ${totalRequestedDays} days. Reason: ${reason || "N/A"}`);
+      Logger.info(`Leave request submitted by ${user.email} for ${totalRequestedDays} days.`);
       ResponseHandler.sendSuccessResponse(
         res,
         {
