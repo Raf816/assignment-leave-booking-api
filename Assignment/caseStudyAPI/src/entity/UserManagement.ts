@@ -1,6 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, ManyToOne, Unique, Column } from "typeorm";
 import { User } from "./User";
-import { IsNotEmpty, IsDate } from "class-validator";
+import { IsNotEmpty, IsDate, IsOptional } from "class-validator";
 
 @Entity()
 @Unique(["manager", "staff"])
@@ -28,6 +28,7 @@ export class UserManagement {
   startDate: Date | null;
 
   @Column({ nullable: true })
+  @IsOptional()
   @IsDate({ message: "End date must be a valid date" })
   endDate: Date | null;
 }
