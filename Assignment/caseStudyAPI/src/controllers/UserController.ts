@@ -75,7 +75,7 @@ export class UserController implements IEntityController {
     user.lastName = req.body.lastName;
     user.department = req.body.department;
 
-    await ValidationUtil.validateOrThrow(user);
+    await ValidationUtil.validateOrThrow(user, ['create']);
 
     user = await this.userRepository.save(user);
     ResponseHandler.sendSuccessResponse(res, instanceToPlain(user), StatusCodes.CREATED);
@@ -122,7 +122,7 @@ export class UserController implements IEntityController {
       user.salt = salt;
     }
 
-    await ValidationUtil.validateOrThrow(user);
+    await ValidationUtil.validateOrThrow(user, ['update']);
 
     user = await this.userRepository.save(user);
     ResponseHandler.sendSuccessResponse(res, instanceToPlain(user), StatusCodes.OK);

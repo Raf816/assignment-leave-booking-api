@@ -23,6 +23,8 @@ export class User {
     // @Exclude() //after post queries - need instanceToPlain when responding
     // password1: string;
 
+    //Working
+    @IsOptional({ groups: ['update'] })
     @Column({ select: false }) //obscure from get queries
     @Exclude() //after post queries - need instanceToPlain when responding
     @IsString({ message: "Password must be a string", groups: ['create', 'update'] })
