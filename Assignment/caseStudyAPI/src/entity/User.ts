@@ -10,11 +10,25 @@ export class User {
     @PrimaryGeneratedColumn()
     id: number
 
+    // @Column({ select: false }) //obscure from get queries
+    // @Exclude() //after post queries - need instanceToPlain when responding
+    // @IsString()
+    // @MinLength(10, { message: 'Password must be at least 10 characters long' })
+    // password1: string
+
+    // @IsString({ message: "Password must be a string" })
+    // @MinLength(10, { message: 'Password must be at least 10 characters long' })
+    // @IsNotEmpty({ message: 'Password is required' })
+    // @Column({ select: false }) //obscure from get queries
+    // @Exclude() //after post queries - need instanceToPlain when responding
+    // password1: string;
+
     @Column({ select: false }) //obscure from get queries
     @Exclude() //after post queries - need instanceToPlain when responding
-    @IsString()
-    @MinLength(10, { message: 'Password must be at least 10 characters long' })
-    password: string
+    @IsString({ message: "Password must be a string", groups: ['create', 'update'] })
+    @MinLength(10, {message: "Password must be at least 10 characters long", groups: ['create', 'update'],})
+    @IsNotEmpty({ message: "Password is required", groups: ['create'] }) // only on create
+    password: string;
 
     @Column({ select: false }) //obscure from get queries
     @Exclude() //after post queries - need instanceToPlain when responding
@@ -27,6 +41,25 @@ export class User {
     @ManyToOne(() => Role,  { nullable: false, eager: true })
     @IsNotEmpty({ message: 'Role is required' })
     role: Role; 
+
+    @BeforeInsert()
+    hashPasswordBeforeInsert() {
+    if (!this.password) {
+        throw new Error("Password must be provided before inserting a user.");
+    }
+        const { hashedPassword, salt } = PasswordHandler.hashPassword(this.password);
+        this.password = hashedPassword;
+        this.salt = salt;
+    }
+
+    @BeforeUpdate()
+    hashPasswordBeforeUpdate() {
+        if (this.password && this.password.length > 0) {
+        const { hashedPassword, salt } = PasswordHandler.hashPassword(this.password);
+        this.password = hashedPassword;
+        this.salt = salt;
+        }
+    }
 
     // @BeforeInsert()
     // @BeforeUpdate()
@@ -49,15 +82,15 @@ export class User {
     //     }
     // }
 
-    @BeforeInsert() 
-    hashPasswordBeforeInsert() {
-    if (!this.password) {
-        throw new Error("Password must be provided before inserting a user.");
-    }
-    const { hashedPassword, salt } = PasswordHandler.hashPassword(this.password); 
-    this.password = hashedPassword;
-    this.salt = salt;
-    }
+    // @BeforeInsert() 
+    // hashPasswordBeforeInsert() {
+    // if (!this.password) {
+    //     throw new Error("Password must be provided before inserting a user.");
+    // }
+    // const { hashedPassword, salt } = PasswordHandler.hashPassword(this.password); 
+    // this.password = hashedPassword;
+    // this.salt = salt;
+    // }
 
     @OneToMany(() => UserManagement, um => um.manager)
     managedStaff: UserManagement[];
