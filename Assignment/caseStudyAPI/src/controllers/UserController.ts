@@ -75,7 +75,20 @@ export class UserController implements IEntityController {
     user.lastName = req.body.lastName;
     user.department = req.body.department;
 
-    await ValidationUtil.validateOrThrow(user, ['create']);
+    // await ValidationUtil.validateOrThrow(user, ['create']);
+    
+    const errors = await validate(user, { groups: ['create'] });
+    if (errors.length > 0) {
+      const errorMessages = errors.map(err => Object.values(err.constraints || {})).flat().join(", ");
+      throw new AppError(errorMessages);
+    }
+
+    const existing = await this.userRepository.findOne({ where: { email: user.email } });
+    if (existing) {
+      throw new AppError(ErrorMessages.EMAIL_ALREADY_IN_USE, StatusCodes.CONFLICT);
+    }
+
+
 
     user = await this.userRepository.save(user);
     ResponseHandler.sendSuccessResponse(res, instanceToPlain(user), StatusCodes.CREATED);
@@ -110,19 +123,62 @@ export class UserController implements IEntityController {
       throw new AppError(ErrorMessages.USER_NOT_FOUND);
     }
 
-    user.email = req.body.email;
+    // user.email = req.body.email;
     user.role = { id: req.body.roleId } as any;
-    user.firstName = req.body.firstName;
-    user.lastName = req.body.lastName;
+    // user.firstName = req.body.firstName;
+    // user.lastName = req.body.lastName;
     user.department = req.body.department;
 
+    //or
+    /*
+    if (req.body.email) user.email = req.body.email;
+    if (req.body.roleId) user.role = { id: req.body.roleId } as any;
+    if (req.body.firstName) user.firstName = req.body.firstName;
+    if (req.body.lastName) user.lastName = req.body.lastName;
+    if (req.body.department !== undefined) user.department = req.body.department;
+    */
+
+      // Only temporarily assigns raw password for validation — hashes after
+    const tempUser = Object.assign(new User(), user); // clone with class type
+    if (req.body.password && req.body.password.trim().length > 0) {
+      tempUser.password = req.body.password; // raw password for validation
+    }
+
+    const errors = await validate(tempUser, { groups: ['update'] });
+    if (errors.length > 0) {
+      const errorMessages = errors
+        .map(err => Object.values(err.constraints || {}))
+        .flat()
+        .join(", ");
+      throw new AppError(errorMessages);
+    }
+
+    // Now hashes and assigns only after validation passes
     if (req.body.password && req.body.password.trim().length > 0) {
       const { hashedPassword, salt } = PasswordHandler.hashPassword(req.body.password);
       user.password = hashedPassword;
       user.salt = salt;
     }
 
-    await ValidationUtil.validateOrThrow(user, ['update']);
+
+    //working beelow line 129-142 (without validation of new password)
+    // if (req.body.password && req.body.password.trim().length > 0) {
+    //   user.password = req.body.password; // assign raw password for validation
+    // }
+
+    // const errors = await validate(user, { groups: ['update'] });
+    // if (errors.length > 0) {
+    //   const errorMessages = errors.map(err => Object.values(err.constraints || {})).flat().join(", ");
+    //   throw new AppError(errorMessages);
+    // }
+
+    // if (req.body.password && req.body.password.trim().length > 0) {
+    //   const { hashedPassword, salt } = PasswordHandler.hashPassword(req.body.password);
+    //   user.password = hashedPassword;
+    //   user.salt = salt;
+    // }
+
+    // await ValidationUtil.validateOrThrow(user, ['update']);
 
     user = await this.userRepository.save(user);
     ResponseHandler.sendSuccessResponse(res, instanceToPlain(user), StatusCodes.OK);

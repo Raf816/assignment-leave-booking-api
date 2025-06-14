@@ -101,6 +101,32 @@ describe('UserManagementController', () => {
     );
   });
 
+    it('assignManagerToStaff: returns BAD_REQUEST if startDate is invalid', async () => {
+    const staff = { id: 1 };
+    const manager = { id: 2 };
+    const req = mockRequest({
+      signedInUser: { email: 'admin@abc.com' },
+      body: {
+        staffId: 1,
+        managerId: 2,
+        startDate: '2025-13-12' // invalid month (should trigger error)
+      }
+    });
+    const res = mockResponse();
+
+    mockUserRepo.findOneBy.mockResolvedValueOnce(staff);
+    mockUserRepo.findOneBy.mockResolvedValueOnce(manager);
+    mockUserManagementRepo.findOne.mockResolvedValueOnce(null);
+
+    await controller.assignManagerToStaff(req, res);
+
+    expect(ResponseHandler.sendErrorResponse).toHaveBeenCalledWith(
+      res,
+      StatusCodes.BAD_REQUEST,
+      'Invalid start date format. Please use a valid date (YYYY-MM-DD).'
+    );
+  });
+
   it('assignManagerToStaff: returns CREATED when successfully assigned', async () => {
     const staff = { id: 1 };
     const manager = { id: 2 };

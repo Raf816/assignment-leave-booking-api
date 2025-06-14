@@ -148,12 +148,34 @@ it('create returns BAD_REQUEST if no password', async () => {
     firstName: validUser.firstName,
     lastName: validUser.lastName,
     department: validUser.department,
-    role: {
-        id: validUser.role.id,
-        name: validUser.role.name,
-    },
-    }, StatusCodes.CREATED);
+    role: {id: validUser.role.id, name: validUser.role.name,},}, 
+    StatusCodes.CREATED);
     });
+
+    it('create throws CONFLICT if email already exists', async () => {
+    const validUser = getValidManagerData();
+
+    const req = mockRequest({}, {
+      email: validUser.email,
+      password: validUser.password,
+      roleId: validUser.role.id,
+      firstName: validUser.firstName,
+      lastName: validUser.lastName,
+      department: validUser.department
+    });
+    const res = mockResponse();
+
+    // Simulate a user already existing with that email
+    mockUserRepository.findOne.mockResolvedValue(validUser);
+
+    try {
+      await userController.create(req as Request, res as Response);
+    } catch (err: any) {
+      expect(err.message).toBe(ErrorMessages.EMAIL_ALREADY_IN_USE);
+    }
+
+    expect(mockUserRepository.findOne).toHaveBeenCalledWith({ where: { email: validUser.email } });
+  });
 
   it('getByEmail returns BAD_REQUEST if email param missing', async () => {
     const req = mockRequest({ emailAddress: '' });

@@ -8,7 +8,7 @@ export class ValidationUtil {
    //Validates the entity using class-validator.
    //If any validation errors are found, it throws an AppError with a error message.
   static async validateOrThrow(entity: any, groups: string[] = []): Promise<void> {
-    const errors = await validate(entity, { groups });
+    const errors = await validate(entity, { groups, skipMissingProperies: false, });
     if (errors.length > 0) {
       const errorMessages = errors
         .map(err => Object.values(err.constraints || {}))

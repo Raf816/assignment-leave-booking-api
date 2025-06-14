@@ -14,6 +14,7 @@ export const ErrorMessages = {
   RETRIEVING_USER_FAILED: (error: string) => `Error retrieving user: ${error}`,
   UNABLE_TO_FIND_USER_EMAIL: (email: string) => `Unable to find user with the email: ${email}`,
   VALIDATION_FAILED: "Validation failed",
+  EMAIL_ALREADY_IN_USE: "Email address already in use",
 
   //User Management
   STAFF_OR_MANAGER_ID_REQUIRED: "Both staffId and managerId are required",

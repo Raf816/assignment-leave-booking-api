@@ -54,14 +54,14 @@ export class User {
         this.salt = salt;
     }
 
-    @BeforeUpdate()
-    hashPasswordBeforeUpdate() {
-        if (this.password && this.password.length > 0) {
-        const { hashedPassword, salt } = PasswordHandler.hashPassword(this.password);
-        this.password = hashedPassword;
-        this.salt = salt;
-        }
-    }
+    // @BeforeUpdate()
+    // hashPasswordBeforeUpdate() {
+    //     if (this.password && this.password.length > 0) {
+    //     const { hashedPassword, salt } = PasswordHandler.hashPassword(this.password);
+    //     this.password = hashedPassword;
+    //     this.salt = salt;
+    //     }
+    // }
 
     // @BeforeInsert()
     // @BeforeUpdate()
@@ -101,14 +101,15 @@ export class User {
     manager: UserManagement[];
 
     @Column()
-    @IsNotEmpty({ message: 'First name is required' })
-    @IsString()
+    @IsNotEmpty({ message: 'First name is required', groups: ['create'] })
+    @IsString({ groups: ['create'] })
     firstName: string;
 
     @Column()
-    @IsNotEmpty({ message: 'Surname is required' })
-    @IsString()
+    @IsNotEmpty({ message: 'Surname is required', groups: ['create'] })
+    @IsString({ groups: ['create'] })
     lastName: string;
+
 
     @Column({ default: 25 })
     annualLeaveBalance: number;

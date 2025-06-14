@@ -20,6 +20,16 @@ export class UserManagementController implements IUserManagementController {
         return;
       }
 
+      // startDate validation 
+      if (startDate && isNaN(Date.parse(startDate))) {
+        ResponseHandler.sendErrorResponse(
+          res,
+          StatusCodes.BAD_REQUEST,
+          "Invalid start date format. Please use a valid date (YYYY-MM-DD)."
+        );
+        return;
+      }
+
       const userRepo = AppDataSource.getRepository(User);
       const userManagementRepo = AppDataSource.getRepository(UserManagement);
 
@@ -46,8 +56,16 @@ export class UserManagementController implements IUserManagementController {
       const mapping = userManagementRepo.create({
         staff,
         manager,
-        startDate: startDate ? new Date(startDate) : new Date()
+        startDate,
       });
+
+      
+      //using date object below
+      // const mapping = userManagementRepo.create({
+      //   staff,
+      //   manager,
+      //   startDate: startDate ? new Date(startDate) : new Date()
+      // });
 
       await ValidationUtil.validateOrThrow(mapping);
 
