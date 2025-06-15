@@ -109,10 +109,10 @@ export class LeaveTypeController {
 
       await leaveTypeRepo.remove(leaveType);
       Logger.info(`Leave type deleted: ${id}`);
-      ResponseHandler.sendSuccessResponse(res, {}, StatusCodes.NO_CONTENT);
-    } catch (error) {
-      Logger.error("Error deleting leave type", error);
-      ResponseHandler.sendErrorResponse(res, StatusCodes.INTERNAL_SERVER_ERROR, ErrorMessages.LEAVE_TYPE_DELETE_FAILED);
+      ResponseHandler.sendSuccessResponse(res,{ message: `Leave type "${leaveType.name}" has been deleted.` }, StatusCodes.ACCEPTED);
+      } catch (error) {
+        Logger.error("Error deleting leave type", error);
+        ResponseHandler.sendErrorResponse(res, StatusCodes.INTERNAL_SERVER_ERROR, ErrorMessages.LEAVE_TYPE_DELETE_FAILED);
     }
   }
 }
