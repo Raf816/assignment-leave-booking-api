@@ -3,7 +3,7 @@ import { DataSource } from "typeorm";
 import morgan, {StreamOptions} from "morgan";
 import { Logger } from "./helper/Logger";
 import { MiddlewareFactory } from "./helper/MiddlewareFactory";
-import { IRouter} from "./routes/IRouter";
+import { IRouter} from "./interfaces/IRouter";
 import { ErrorHandler } from "./helper/ErrorHandler";
 
 export class Server {

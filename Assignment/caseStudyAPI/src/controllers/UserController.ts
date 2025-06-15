@@ -1,163 +1,186 @@
 import { Request, Response } from 'express';
-import { AppDataSource } from '../data-source'; 
+import { AppDataSource } from '../data-source';
 import { User } from '../entity/User';
 import { Repository } from "typeorm";
 import { ResponseHandler } from '../helper/ResponseHandler';
 import { instanceToPlain } from "class-transformer";
 import { StatusCodes } from 'http-status-codes';
 import { validate } from "class-validator";
-import { IEntityController} from './IEntityController';
-import { AppError } from '../helper/AppError';
+import { IEntityController } from '../interfaces/IEntityController';
+import { AppError } from "../helper/AppError";
+import { PasswordHandler } from '../helper/PasswordHandler';
+import { ValidationUtil } from '../helper/ValidationUtils';
+import { ErrorMessages } from '../constants/ErrorMessages';
 
-export class UserController implements IEntityController{
-  public static readonly ERROR_NO_USER_ID_PROVIDED = "No ID provided";
-  public static readonly ERROR_INVALID_USER_ID_FORMAT = "Invalid ID format";
-  public static readonly ERROR_USER_NOT_FOUND = "User not found";
-  public static readonly ERROR_USER_NOT_FOUND_WITH_ID = (id: number) => `User not found with ID: ${id}`;
-  public static readonly ERROR_PASSWORD_IS_BLANK = "Password is blank";
-  public static readonly ERROR_FAILED_TO_RETRIEVE_USERS = "Failed to retrieve users";
-  public static readonly ERROR_FAILED_TO_RETRIEVE_USER = "Failed to retrieve user";
-  public static readonly ERROR_USER_NOT_FOUND_FOR_DELETION = "User with the provided ID not found";
-  public static readonly ERROR_EMAIL_REQUIRED = "Email is required";
-  public static readonly ERROR_EMAIL_NOT_FOUND = (email: string) => `${email} not found`;
-  public static readonly ERROR_RETRIEVING_USER = (error: string) => `Error retrieving user: ${error}`;
-  public static readonly ERROR_UNABLE_TO_FIND_USER_EMAIL = (email: string) => `Unable to find user with the email: ${email}`;
-  public static readonly ERROR_VALIDATION_FAILED = "Validation failed";
-
+export class UserController implements IEntityController {
   private userRepository: Repository<User>;
 
   constructor() {
     this.userRepository = AppDataSource.getRepository(User);
   }
 
-  // Get all users
   public getAll = async (req: Request, res: Response): Promise<void> => {
-    
-      const users = await this.userRepository.find({
-        relations: ["role"], 
-      });
+    const users = await this.userRepository.find({ relations: ["role"] });
 
-      if (users.length === 0) {
-        ResponseHandler.sendSuccessResponse(res, [], StatusCodes.NO_CONTENT); 
-      }
+    if (users.length === 0) {
+      ResponseHandler.sendSuccessResponse(res, [], StatusCodes.NO_CONTENT);
+      return;
+    }
 
-      ResponseHandler.sendSuccessResponse(res, users);
+    ResponseHandler.sendSuccessResponse(res, users);
   };
 
-  // Get user by email
   public getByEmail = async (req: Request, res: Response): Promise<void> => {
     const email = req.params.emailAddress;
 
     if (!email || email.trim().length === 0) {
-      ResponseHandler.sendErrorResponse(res, 
-                                        StatusCodes.BAD_REQUEST, 
-                                        UserController.ERROR_EMAIL_REQUIRED);
+      ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, ErrorMessages.EMAIL_REQUIRED);
       return;
     }
 
+    const user = await this.userRepository.find({ where: { email }, relations: ["role"] });
 
-    const user = await this.userRepository.find({ where: { email: email },  
-                                                  relations: ["role"]});
     if (user.length === 0) {
-      ResponseHandler.sendErrorResponse(res, 
-                                        StatusCodes.BAD_REQUEST, 
-                                        `${email} not found`);
+      ResponseHandler.sendErrorResponse(res, StatusCodes.NOT_FOUND, ErrorMessages.EMAIL_NOT_FOUND(email));
       return;
     }
 
     ResponseHandler.sendSuccessResponse(res, user);
   };
 
-  // Get user by ID
   public getById = async (req: Request, res: Response): Promise<void> => {
     const id = parseInt(req.params.id);
+
     if (isNaN(id)) {
-      ResponseHandler.sendErrorResponse(res, 
-                                        StatusCodes.BAD_REQUEST, 
-                                        UserController.ERROR_INVALID_USER_ID_FORMAT);
+      ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, ErrorMessages.INVALID_USER_ID_FORMAT);
       return;
     }
 
-    
-      const user = await this.userRepository.findOne({ where: { id: id },  
-                                                      relations: ["role"] });
-      if (!user) {
-        ResponseHandler.sendErrorResponse(res, 
-                                          StatusCodes.NO_CONTENT, 
-                                          UserController.ERROR_USER_NOT_FOUND_WITH_ID(id));
-        return;
-      }
+    const user = await this.userRepository.findOne({ where: { id }, relations: ["role"] });
 
-      ResponseHandler.sendSuccessResponse(res, user);
+    if (!user) {
+      ResponseHandler.sendErrorResponse(res, StatusCodes.NOT_FOUND, ErrorMessages.USER_NOT_FOUND_WITH_ID(id));
+      return;
+    }
+
+    ResponseHandler.sendSuccessResponse(res, user);
   };
 
-  // Add a new user
   public create = async (req: Request, res: Response): Promise<void> => {
-      let user = new User();
-      user.password = req.body.password;
-      user.email = req.body.email;
-      user.role = req.body.roleId;
+    let user = new User();
+    user.password = req.body.password;
+    user.email = req.body.email;
+    user.role = { id: req.body.roleId } as any;
+    user.firstName = req.body.firstName;
+    user.lastName = req.body.lastName;
+    user.department = req.body.department;
 
-      const errors = await validate(user);
-      if (errors.length > 0) { //Collate a string of all decorator error messages
-          throw new AppError (errors.map(err => Object.values(err.constraints || {})).join(", "));
-      }
+    // await ValidationUtil.validateOrThrow(user, ['create']);
+    
+    const errors = await validate(user, { groups: ['create'] });
+    if (errors.length > 0) {
+      const errorMessages = errors.map(err => Object.values(err.constraints || {})).flat().join(", ");
+      throw new AppError(errorMessages);
+    }
 
-      user = await this.userRepository.save(user); // Save and return the created object
-      ResponseHandler.sendSuccessResponse(res, 
-                                          instanceToPlain(user), 
-                                          StatusCodes.CREATED);
-      //remember to include instanceToPlain otherwise sensitive fields will be exposed
+    const existing = await this.userRepository.findOne({ where: { email: user.email } });
+    if (existing) {
+      throw new AppError(ErrorMessages.EMAIL_ALREADY_IN_USE, StatusCodes.CONFLICT);
+    }
+
+
+
+    user = await this.userRepository.save(user);
+    ResponseHandler.sendSuccessResponse(res, instanceToPlain(user), StatusCodes.CREATED);
   };
 
-  // Delete a user
   public delete = async (req: Request, res: Response): Promise<void> => {
     const id = req.params.id;
 
-   
-      if (!id) {
-        throw new AppError("No ID provided");
-      }
+    if (!id) {
+      throw new AppError(ErrorMessages.NO_USER_ID_PROVIDED);
+    }
 
-      const result = await this.userRepository.delete(id);
+    const result = await this.userRepository.delete(id);
 
-      if (result.affected === 0) {
-        throw new AppError("User with the provided ID not found");
-      }
+    if (result.affected === 0) {
+      throw new AppError(ErrorMessages.USER_NOT_FOUND_FOR_DELETION);
+    }
 
-      ResponseHandler.sendSuccessResponse(res,
-                                          "User deleted", 
-                                          StatusCodes.OK);
+    ResponseHandler.sendSuccessResponse(res, "User deleted", StatusCodes.OK);
   };
 
-  // Update details (not password or id)
   public update = async (req: Request, res: Response): Promise<void> => {
-      const id = req.body.id;
-    
-      if (!id) {
-        throw new AppError(UserController.ERROR_NO_USER_ID_PROVIDED);
-      }
-      
-      let user = await this.userRepository.findOneBy({ id });
+    const id = req.params.id ? parseInt(req.params.id) : req.body.id;
 
-      if (!user) {
-        throw new AppError(UserController.ERROR_USER_NOT_FOUND);
-      }
+    if (!id || isNaN(id)) {
+      throw new AppError(ErrorMessages.NO_USER_ID_PROVIDED);
+    }
 
-      // Update specific fields
-      user.email = req.body.email;
-      user.role = req.body.roleId;
-      user.password = req.body.password;
+    let user = await this.userRepository.findOneBy({ id });
 
-      const errors = await validate(user);
-      if (errors.length > 0) { //Collate a string of all decorator error messages
-         throw new AppError (errors.map(err => Object.values(err.constraints || {})).join(", "));
-      }
+    if (!user) {
+      throw new AppError(ErrorMessages.USER_NOT_FOUND);
+    }
 
-      user = await this.userRepository.save(user);
+    // user.email = req.body.email;
+    user.role = { id: req.body.roleId } as any;
+    // user.firstName = req.body.firstName;
+    // user.lastName = req.body.lastName;
+    user.department = req.body.department;
 
-      ResponseHandler.sendSuccessResponse(res, 
-                                          user, 
-                                          StatusCodes.OK);
+    //or
+    /*
+    if (req.body.email) user.email = req.body.email;
+    if (req.body.roleId) user.role = { id: req.body.roleId } as any;
+    if (req.body.firstName) user.firstName = req.body.firstName;
+    if (req.body.lastName) user.lastName = req.body.lastName;
+    if (req.body.department !== undefined) user.department = req.body.department;
+    */
+
+      // Only temporarily assigns raw password for validation — hashes after
+    const tempUser = Object.assign(new User(), user); // clone with class type
+    if (req.body.password && req.body.password.trim().length > 0) {
+      tempUser.password = req.body.password; // raw password for validation
+    }
+
+    const errors = await validate(tempUser, { groups: ['update'] });
+    if (errors.length > 0) {
+      const errorMessages = errors
+        .map(err => Object.values(err.constraints || {}))
+        .flat()
+        .join(", ");
+      throw new AppError(errorMessages);
+    }
+
+    // Now hashes and assigns only after validation passes
+    if (req.body.password && req.body.password.trim().length > 0) {
+      const { hashedPassword, salt } = PasswordHandler.hashPassword(req.body.password);
+      user.password = hashedPassword;
+      user.salt = salt;
+    }
+
+
+    //working beelow line 129-142 (without validation of new password)
+    // if (req.body.password && req.body.password.trim().length > 0) {
+    //   user.password = req.body.password; // assign raw password for validation
+    // }
+
+    // const errors = await validate(user, { groups: ['update'] });
+    // if (errors.length > 0) {
+    //   const errorMessages = errors.map(err => Object.values(err.constraints || {})).flat().join(", ");
+    //   throw new AppError(errorMessages);
+    // }
+
+    // if (req.body.password && req.body.password.trim().length > 0) {
+    //   const { hashedPassword, salt } = PasswordHandler.hashPassword(req.body.password);
+    //   user.password = hashedPassword;
+    //   user.salt = salt;
+    // }
+
+    // await ValidationUtil.validateOrThrow(user, ['update']);
+
+    user = await this.userRepository.save(user);
+    ResponseHandler.sendSuccessResponse(res, instanceToPlain(user), StatusCodes.OK);
   };
 }

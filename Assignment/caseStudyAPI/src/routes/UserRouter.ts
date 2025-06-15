@@ -1,7 +1,8 @@
-import { Router } from "express";  // Correctly import Router
-import { IRouter } from "./IRouter";
-import { IEntityController } from "../controllers/IEntityController";
-import { IGetByEmail } from "../controllers/IGetByEmail";
+import { Router } from "express";  
+import { IRouter } from "../interfaces/IRouter";
+import { IEntityController } from "../interfaces/IEntityController";
+import { IGetByEmail } from "../interfaces/IGetByEmail";
+
 
 export class UserRouter implements IRouter{
   public routeName = "users";
@@ -24,5 +25,6 @@ export class UserRouter implements IRouter{
     this.router.get('/:id', this.userController.getById); 
     this.router.post('/', this.userController.create);  
     this.router.patch('/', this.userController.update);
+    this.router.patch('/:id', this.userController.update);
   }
 }

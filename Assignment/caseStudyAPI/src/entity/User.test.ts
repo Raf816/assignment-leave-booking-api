@@ -16,13 +16,13 @@ describe("User Entity tests", () => {
         mockUserRepository = mock<Repository<User>>();
 
         role = new Role();
-        role.id = 1;
+        role.id = 2;
         role.name = "admin";
 
         user = new User();
         user.id = 1;
         user.email = "test@email.com"; 
-        user.password = 'a'.repeat(10);
+        user.password = 'acd'.repeat(10);
         user.role = role;
     });
 
