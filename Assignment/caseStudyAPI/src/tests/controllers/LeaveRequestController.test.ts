@@ -8,6 +8,7 @@ import { StatusCodes } from 'http-status-codes';
 import { ResponseHandler } from '../../helper/ResponseHandler';
 import { mock } from 'jest-mock-extended';
 import { ErrorMessages } from '../../constants/ErrorMessages';
+import { LeaveType } from '../../entity/LeaveType';
 
 jest.mock('../../helper/ResponseHandler');
 jest.mock('class-validator', () => ({
@@ -20,6 +21,7 @@ describe('LeaveRequestController', () => {
   let mockLeaveRepo: any;
   let mockUserRepo: any;
   let mockUserMgmtRepo: any;
+  let mockLeaveTypeRepo: any;
 
   const mockResponse = (): any => ({});
   const mockRequest = (props: Partial<IAuthenticatedJWTRequest>): IAuthenticatedJWTRequest =>
@@ -34,11 +36,13 @@ describe('LeaveRequestController', () => {
     mockLeaveRepo = mock();
     mockUserRepo = mock();
     mockUserMgmtRepo = mock();
+    mockLeaveTypeRepo = mock();
 
     AppDataSource.getRepository = jest.fn().mockImplementation((entity) => {
       if (entity === LeaveRequest) return mockLeaveRepo;
       if (entity === User) return mockUserRepo;
       if (entity === UserManagement) return mockUserMgmtRepo;
+      if (entity === LeaveType) return mockLeaveTypeRepo;
     });
   };
 
@@ -147,22 +151,26 @@ describe('LeaveRequestController', () => {
 
     const req = mockRequest({
       signedInUser: { email: user.email },
-      body: { startDate: '2025-08-01', endDate: '2025-08-05' },
+      body: {
+        startDate: '2025-08-01',
+        endDate: '2025-08-05',
+        leaveType: undefined // 👈 force validation error
+      },
     });
     const res = mockResponse();
 
     mockUserRepo.findOne.mockResolvedValue(user);
+
     const { validate } = require('class-validator');
-    validate.mockResolvedValue([{ constraints: { isNotEmpty: 'leaveType should not be empty' } }]);
+    validate.mockResolvedValue([
+      { constraints: { isNotEmpty: 'leaveType should not be empty' } }
+    ]);
 
     await controller.requestLeave(req, res);
 
-    expect(ResponseHandler.sendErrorResponse).toHaveBeenCalledWith(
-      res,
-      StatusCodes.BAD_REQUEST,
-      'leaveType should not be empty'
-    );
+    expect(ResponseHandler.sendErrorResponse).toHaveBeenCalledWith(res,StatusCodes.BAD_REQUEST, ErrorMessages.INVALID_LEAVE_TYPE_ID);
   });
+
 
   it('requestLeave: returns BAD_REQUEST if leave overlaps', async () => {
     const user = new User();
@@ -172,11 +180,22 @@ describe('LeaveRequestController', () => {
 
     const req = mockRequest({
       signedInUser: { email: user.email },
-      body: { startDate: '2025-08-05', endDate: '2025-08-07' },
+      body: {
+        startDate: '2025-08-05',
+        endDate: '2025-08-07',
+        leaveType: 1
+      },
     });
     const res = mockResponse();
 
     mockUserRepo.findOne.mockResolvedValue(user);
+    mockLeaveTypeRepo.findOneBy.mockResolvedValue({
+      id: 1,
+      name: 'Annual Leave',
+      defaultBalance: 25,
+      maxRolloverDays: 5
+    });
+
     const { validate } = require('class-validator');
     validate.mockResolvedValue([]);
 
@@ -196,6 +215,7 @@ describe('LeaveRequestController', () => {
       'Leave dates overlap with an existing request'
     );
   });
+
 
   it('cancelLeave: returns FORBIDDEN if not owner or admin', async () => {
     const user = new User();
@@ -344,7 +364,7 @@ it('approveLeave: returns BAD_REQUEST if insufficient balance', async () => {
     expect(ResponseHandler.sendSuccessResponse).toHaveBeenCalledWith(res, [], StatusCodes.OK, 'No pending requests for your staff');
   });
 
-    // ✅ requestLeave: success
+  
   it('requestLeave: creates leave successfully when valid', async () => {
     const user = new User();
     user.id = 1;
@@ -356,16 +376,26 @@ it('approveLeave: returns BAD_REQUEST if insufficient balance', async () => {
       body: {
         startDate: '2025-08-01',
         endDate: '2025-08-03',
-        leaveType: 'Annual Leave',
-        reason: 'Holiday'
+        leaveType: 1,
+        reason: 'Annual Leave'
       }
     });
     const res = mockResponse();
 
     mockUserRepo.findOne.mockResolvedValue(user);
+    mockLeaveTypeRepo.findOneBy.mockResolvedValue({
+      id: 1,
+      name: 'Annual Leave',
+      defaultBalance: 25,
+      maxRolloverDays: 5
+    });
+
+
     mockLeaveRepo.find.mockResolvedValue([]);
+
     const { validate } = require('class-validator');
     validate.mockResolvedValue([]);
+
     mockLeaveRepo.save.mockResolvedValue({ id: 1, ...req.body, status: LeaveStatus.PENDING });
 
     await controller.requestLeave(req, res);
@@ -380,6 +410,8 @@ it('approveLeave: returns BAD_REQUEST if insufficient balance', async () => {
       StatusCodes.CREATED
     );
   });
+
+
 
   // ✅ getMyRequests: success
   it('getMyRequests: returns leave requests for user', async () => {
@@ -514,7 +546,7 @@ it('approveLeave: returns BAD_REQUEST if insufficient balance', async () => {
     );
   });
 
-  // ✅ getUserLeaveRequests: success
+  
   it('getUserLeaveRequests: returns leave requests for given user', async () => {
     const user = new User();
     user.id = 6;
@@ -524,7 +556,7 @@ it('approveLeave: returns BAD_REQUEST if insufficient balance', async () => {
 
     const leave1 = new LeaveRequest();
     leave1.id = 7;
-    leave1.leaveType = 'Annual';
+    leave1.leaveType = { name: 'Annual Leave' } as any;
     leave1.startDate = '2025-08-01';
     leave1.endDate = '2025-08-02';
     leave1.status = LeaveStatus.APPROVED;
@@ -544,13 +576,14 @@ it('approveLeave: returns BAD_REQUEST if insufficient balance', async () => {
       expect.arrayContaining([
         expect.objectContaining({
           id: 7,
-          leaveType: 'Annual',
+          leaveType: expect.objectContaining({ name: 'Annual Leave' }),
           user: expect.objectContaining({ email: 'target@abc.com' })
         })
       ]),
       StatusCodes.OK
     );
   });
+
 
   // ✅ getPendingRequests: admin sees all
   it('getPendingRequests: admin sees all pending leave requests', async () => {

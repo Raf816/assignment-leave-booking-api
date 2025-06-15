@@ -11,6 +11,7 @@ import { AppError } from "../helper/AppError";
 import { PasswordHandler } from '../helper/PasswordHandler';
 import { ValidationUtil } from '../helper/ValidationUtils';
 import { ErrorMessages } from '../constants/ErrorMessages';
+import { LeaveType } from '../entity/LeaveType';
 
 export class UserController implements IEntityController {
   private userRepository: Repository<User>;
@@ -67,6 +68,14 @@ export class UserController implements IEntityController {
   };
 
   public create = async (req: Request, res: Response): Promise<void> => {
+    const leaveTypeRepo = AppDataSource.getRepository(LeaveType);
+
+    // Step 1: Get default balance from "Annual Leave"
+    const annualLeaveType = await leaveTypeRepo.findOne({ where: { name: "Annual Leave" } });
+    if (!annualLeaveType) {
+      throw new AppError("LeaveType 'Annual Leave' not found in database.", StatusCodes.INTERNAL_SERVER_ERROR);
+    }
+
     let user = new User();
     user.password = req.body.password;
     user.email = req.body.email;
@@ -74,6 +83,7 @@ export class UserController implements IEntityController {
     user.firstName = req.body.firstName;
     user.lastName = req.body.lastName;
     user.department = req.body.department;
+    user.annualLeaveBalance = annualLeaveType.defaultBalance;
 
     // await ValidationUtil.validateOrThrow(user, ['create']);
     
@@ -87,8 +97,6 @@ export class UserController implements IEntityController {
     if (existing) {
       throw new AppError(ErrorMessages.EMAIL_ALREADY_IN_USE, StatusCodes.CONFLICT);
     }
-
-
 
     user = await this.userRepository.save(user);
     ResponseHandler.sendSuccessResponse(res, instanceToPlain(user), StatusCodes.CREATED);

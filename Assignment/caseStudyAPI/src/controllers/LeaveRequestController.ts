@@ -43,7 +43,7 @@ export class LeaveRequestController implements ILeaveRequestController {
 
       if (!selectedLeaveType) {
         Logger.warn(`Invalid leaveTypeId: ${leaveTypeId}`);
-        ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, "Invalid leave type ID provided.");
+        ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, ErrorMessages.INVALID_LEAVE_TYPE_ID);
         return;
 }
 
