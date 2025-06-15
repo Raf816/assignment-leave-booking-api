@@ -296,6 +296,13 @@ it('approveLeave: returns BAD_REQUEST if insufficient balance', async () => {
   it('getAllLeaveRequests: returns empty if none found', async () => {
     const req = mockRequest({ signedInUser: { email: 'admin@abc.com' } });
     const res = mockResponse();
+
+    mockUserRepo.findOne.mockResolvedValue({
+      id: 1,
+      email:'admin@abc.com',
+      role: { name: 'admin'}
+    })
+
     mockLeaveRepo.find.mockResolvedValue([]);
 
     await controller.getAllLeaveRequests(req, res);
