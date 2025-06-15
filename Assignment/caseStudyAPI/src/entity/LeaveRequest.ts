@@ -1,6 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, UpdateDateColumn } from "typeorm";
 import { IsDateString, IsEnum, IsNotEmpty } from "class-validator";
 import { User } from "./User";
+import { LeaveType } from "./LeaveType";
 
 export enum LeaveStatus {
     PENDING = 'Pending',
@@ -17,8 +18,9 @@ export class LeaveRequest {
   @ManyToOne(() => User, { nullable: false, eager: true })
   user: User;
 
-  @Column({ default: 'Annual Leave' })
-  leaveType: string;
+  @ManyToOne(() => LeaveType, { eager: true, nullable: false })
+  @IsNotEmpty({ message: "Leave type is required" })
+  leaveType: LeaveType;
 
   @Column()
   @IsDateString({}, { message: 'Start date must be valid' })

@@ -12,6 +12,8 @@ import { LeaveRequestRouter } from "./routes/LeaveRequestRouter";
 import { LeaveRequestController } from "./controllers/LeaveRequestController";
 import { UserManagementRouter } from "./routes/UserManagementRouter";
 import { UserManagementController } from "./controllers/UserManagementController";
+import { LeaveTypeController } from "./controllers/LeaveTypeController";
+import { LeaveTypeRouter } from "./routes/LeaveTypeRouter";
 
 //Initialise the port
 const DEFAULT_PORT = 9900
@@ -29,7 +31,8 @@ const routers = [
     new RoleRouter(Router(), new RoleController()),
     new UserRouter(Router(), new UserController()),
     new LeaveRequestRouter(Router(), new LeaveRequestController()),
-    new UserManagementRouter(Router(), new UserManagementController())
+    new UserManagementRouter(Router(), new UserManagementController()),
+    new LeaveTypeRouter(Router(), new LeaveTypeController())
 ];
 
 //Instantiate/start the server

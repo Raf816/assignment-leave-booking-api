@@ -53,8 +53,15 @@ export const ErrorMessages = {
   NO_PASSWORD_PROVIDED: "No password provided",
   PASSWORD_INCORRECT: "Password incorrect",
 
+  // LeaveType
+  LEAVE_TYPE_NOT_FOUND: (id: number) => `Leave type not found with ID: ${id}`,
+  INVALID_LEAVE_TYPE_ID: "Invalid leave type ID",
+  LEAVE_TYPE_IN_USE: "Cannot delete leave type — it is currently used in existing leave requests",
+  LEAVE_TYPE_CREATE_FAILED: "Failed to create leave type",
+  LEAVE_TYPE_UPDATE_FAILED: "Failed to update leave type",
+  LEAVE_TYPE_DELETE_FAILED: "Failed to delete leave type",
+  LEAVE_TYPE_VALIDATION_FAILED: "Validation failed for leave type",
+  LEAVE_TYPE_ALREADY_EXISTS: "Leave type with this name already exists",
 
   INTERNAL_ERROR: "An error occurred while processing the request",
-
-
 };

@@ -13,6 +13,7 @@ import { UserManagement } from '../entity/UserManagement';
 import { ILeaveRequestController } from '../interfaces/ILeaveRequestController';
 import { ValidationUtil } from '../helper/ValidationUtils';
 import { ErrorMessages } from '../constants/ErrorMessages';
+import { LeaveType } from '../entity/LeaveType';
 
 export class LeaveRequestController implements ILeaveRequestController {
 
@@ -21,7 +22,7 @@ export class LeaveRequestController implements ILeaveRequestController {
       const userRepository = AppDataSource.getRepository(User);
       const leaveRepository = AppDataSource.getRepository(LeaveRequest);
       
-      const { startDate, endDate, leaveType, reason } = req.body;
+      const { startDate, endDate, leaveTypeId, reason } = req.body;
 
       const emailFromToken = req.signedInUser?.email;
       if (!emailFromToken) {
@@ -37,6 +38,15 @@ export class LeaveRequestController implements ILeaveRequestController {
         return;
       }
 
+      const leaveTypeRepo = AppDataSource.getRepository(LeaveType);
+      const selectedLeaveType = await leaveTypeRepo.findOneBy({ id: leaveTypeId });
+
+      if (!selectedLeaveType) {
+        Logger.warn(`Invalid leaveTypeId: ${leaveTypeId}`);
+        ResponseHandler.sendErrorResponse(res, StatusCodes.BAD_REQUEST, "Invalid leave type ID provided.");
+        return;
+}
+
       const start = new Date(startDate);
       const end = new Date(endDate);
 
@@ -51,7 +61,7 @@ export class LeaveRequestController implements ILeaveRequestController {
       leave.startDate = startDate;
       leave.endDate = endDate;
       leave.status = LeaveStatus.PENDING;
-      leave.leaveType = leaveType || "Annual Leave";
+      leave.leaveType = selectedLeaveType;
       leave.reason = reason;
 
       try {
