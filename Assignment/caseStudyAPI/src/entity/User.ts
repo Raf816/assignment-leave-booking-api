@@ -54,46 +54,6 @@ export class User {
         this.salt = salt;
     }
 
-    // @BeforeUpdate()
-    // hashPasswordBeforeUpdate() {
-    //     if (this.password && this.password.length > 0) {
-    //     const { hashedPassword, salt } = PasswordHandler.hashPassword(this.password);
-    //     this.password = hashedPassword;
-    //     this.salt = salt;
-    //     }
-    // }
-
-    // @BeforeInsert()
-    // @BeforeUpdate()
-    // hashPassword() {
-    //     if (!this.password) {
-    //         throw new Error("Password must be provided before inserting a user.");
-    //     }
-    //     const { hashedPassword, salt } = PasswordHandler.hashPassword(this.password); 
-    //     this.password = hashedPassword;
-    //     this.salt = salt;
-    // }
-
-    // @BeforeInsert()
-    // @BeforeUpdate()
-    // hashPassword() {
-    //     if (this.password && this.password.length > 0) {
-    //         const { hashedPassword, salt } = PasswordHandler.hashPassword(this.password); 
-    //         this.password = hashedPassword;
-    //         this.salt = salt;
-    //     }
-    // }
-
-    // @BeforeInsert() 
-    // hashPasswordBeforeInsert() {
-    // if (!this.password) {
-    //     throw new Error("Password must be provided before inserting a user.");
-    // }
-    // const { hashedPassword, salt } = PasswordHandler.hashPassword(this.password); 
-    // this.password = hashedPassword;
-    // this.salt = salt;
-    // }
-
     @OneToMany(() => UserManagement, um => um.manager)
     managedStaff: UserManagement[];
 
