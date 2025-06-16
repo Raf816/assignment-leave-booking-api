@@ -15,6 +15,10 @@ export const ErrorMessages = {
   UNABLE_TO_FIND_USER_EMAIL: (email: string) => `Unable to find user with the email: ${email}`,
   VALIDATION_FAILED: "Validation failed",
   EMAIL_ALREADY_IN_USE: "Email address already in use",
+  FAILED_TO_RETRIEVE_ROLES: "Failed to retrieve roles",
+  FAILED_TO_RETRIEVE_ROLE: "Failed to retrieve role",
+  ROLE_NOT_FOUND_FOR_DELETION: "Role with the provided ID not found",
+  ROLE_NOT_FOUND: "Role not found",
 
   //User Management
   STAFF_OR_MANAGER_ID_REQUIRED: "Both staffId and managerId are required",

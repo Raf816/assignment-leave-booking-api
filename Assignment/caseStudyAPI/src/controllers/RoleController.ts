@@ -7,16 +7,11 @@ import { ResponseHandler } from '../helper/ResponseHandler';
 import { validate } from "class-validator";
 import { AppError } from "../helper/AppError";
 import { IEntityController } from '../interfaces/IEntityController';
+import { ErrorMessages } from '../constants/ErrorMessages';
 
 export class RoleController implements IEntityController{
-    public static readonly ERROR_NO_ID_PROVIDED = "No ID provided";
-    public static readonly ERROR_INVALID_ID_FORMAT = "Invalid ID format";
-    public static readonly ERROR_ROLE_NOT_FOUND = "Role not found";
     public static readonly ERROR_ROLE_NOT_FOUND_WITH_ID = (id: number) => `Role not found with ID: ${id}`;
     public static readonly ERROR_NAME_IS_BLANK = "Name is blank";
-    public static readonly ERROR_FAILED_TO_RETRIEVE_ROLES = "Failed to retrieve roles";
-    public static readonly ERROR_FAILED_TO_RETRIEVE_ROLE = "Failed to retrieve role";
-    public static readonly ERROR_ROLE_NOT_FOUND_FOR_DELETION = "Role with the provided ID not found";
 
     private roleRepository: Repository<Role>;
     constructor() {
@@ -38,7 +33,7 @@ export class RoleController implements IEntityController{
         ResponseHandler.sendErrorResponse(
         res,
         StatusCodes.INTERNAL_SERVER_ERROR,
-        RoleController.ERROR_FAILED_TO_RETRIEVE_ROLES
+        ErrorMessages.FAILED_TO_RETRIEVE_ROLES
         );
     }
     };
@@ -53,7 +48,7 @@ export class RoleController implements IEntityController{
         ResponseHandler.sendErrorResponse(
             res,
             StatusCodes.BAD_REQUEST,
-            RoleController.ERROR_INVALID_ID_FORMAT
+            ErrorMessages.INVALID_USER_ID_FORMAT
         );
         return;
         }
@@ -73,7 +68,7 @@ export class RoleController implements IEntityController{
         ResponseHandler.sendErrorResponse(
         res,
         StatusCodes.INTERNAL_SERVER_ERROR,
-        RoleController.ERROR_FAILED_TO_RETRIEVE_ROLE
+        ErrorMessages.FAILED_TO_RETRIEVE_ROLE
         );
     }
     };
@@ -101,13 +96,13 @@ export class RoleController implements IEntityController{
         const id = req.params.id;
     
         if (!id) {
-            throw new Error(RoleController.ERROR_NO_ID_PROVIDED);
+            throw new Error(ErrorMessages.NO_USER_ID_PROVIDED);
         }
 
         const result = await this.roleRepository.delete(id);
 
         if (result.affected === 0) {
-            throw new AppError(RoleController.ERROR_ROLE_NOT_FOUND_FOR_DELETION);
+            throw new AppError(ErrorMessages.ROLE_NOT_FOUND_FOR_DELETION);
         }
 
         ResponseHandler.sendSuccessResponse(res, "Role deleted"); 
@@ -119,13 +114,13 @@ export class RoleController implements IEntityController{
         const id = req.body.id;
     
         if (!id) {
-            throw new AppError(RoleController.ERROR_NO_ID_PROVIDED);
+            throw new AppError(ErrorMessages.NO_USER_ID_PROVIDED);
         }
         
         let role = await this.roleRepository.findOneBy({ id });
         
         if (!role) {
-            throw new AppError(RoleController.ERROR_ROLE_NOT_FOUND);
+            throw new AppError(ErrorMessages.ROLE_NOT_FOUND);
         }
 
         //Update fields
