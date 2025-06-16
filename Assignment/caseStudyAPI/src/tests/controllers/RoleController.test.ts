@@ -6,6 +6,7 @@ import { StatusCodes } from 'http-status-codes';
 import { mock } from 'jest-mock-extended';
 import * as classValidator from 'class-validator';
 import { ResponseHandler } from '../../helper/ResponseHandler';
+import { ErrorMessages } from '../../constants/ErrorMessages';
 
 jest.mock('../../helper/ResponseHandler');
 
@@ -64,7 +65,7 @@ describe('RoleController', () => {
     expect(ResponseHandler.sendErrorResponse).toHaveBeenCalledWith(
       res,
       StatusCodes.INTERNAL_SERVER_ERROR,
-      RoleController.ERROR_FAILED_TO_RETRIEVE_ROLES
+      ErrorMessages.FAILED_TO_RETRIEVE_ROLES
     );
   });
 
@@ -75,7 +76,7 @@ describe('RoleController', () => {
     expect(ResponseHandler.sendErrorResponse).toHaveBeenCalledWith(
       res,
       StatusCodes.BAD_REQUEST,
-      RoleController.ERROR_INVALID_ID_FORMAT
+      ErrorMessages.INVALID_USER_ID_FORMAT
     );
   });
 
@@ -99,7 +100,7 @@ describe('RoleController', () => {
     expect(ResponseHandler.sendErrorResponse).toHaveBeenCalledWith(
       res,
       StatusCodes.INTERNAL_SERVER_ERROR,
-      RoleController.ERROR_FAILED_TO_RETRIEVE_ROLE
+      ErrorMessages.FAILED_TO_RETRIEVE_ROLE
     );
   });
 
@@ -152,7 +153,7 @@ describe('RoleController', () => {
     const req = mockRequest(); // no id
     const res = mockResponse();
     await expect(roleController.delete(req as Request, res as Response)).rejects.toThrow(
-      RoleController.ERROR_NO_ID_PROVIDED
+      ErrorMessages.NO_USER_ID_PROVIDED
     );
   });
 
@@ -161,7 +162,7 @@ describe('RoleController', () => {
     const res = mockResponse();
     mockRoleRepo.delete.mockResolvedValue({ affected: 0 } as DeleteResult);
     await expect(roleController.delete(req as Request, res as Response)).rejects.toThrow(
-      RoleController.ERROR_ROLE_NOT_FOUND_FOR_DELETION
+      ErrorMessages.ROLE_NOT_FOUND_FOR_DELETION
     );
   });
 
@@ -177,7 +178,7 @@ describe('RoleController', () => {
     const req = mockRequest({}, { name: 'manager' });
     const res = mockResponse();
     await expect(roleController.update(req as Request, res as Response)).rejects.toThrow(
-      RoleController.ERROR_NO_ID_PROVIDED
+      ErrorMessages.NO_USER_ID_PROVIDED
     );
   });
 
@@ -186,7 +187,7 @@ describe('RoleController', () => {
     const res = mockResponse();
     mockRoleRepo.findOneBy.mockResolvedValue(null);
     await expect(roleController.update(req as Request, res as Response)).rejects.toThrow(
-      RoleController.ERROR_ROLE_NOT_FOUND
+      ErrorMessages.ROLE_NOT_FOUND
     );
   });
 
