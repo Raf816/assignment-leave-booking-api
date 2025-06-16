@@ -1,13 +1,14 @@
 import { UserController } from '../../controllers/UserController';
 import { User } from '../../entity/User';
 import { Role } from '../../entity/Role';
+import { LeaveType } from '../../entity/LeaveType';
 import { Repository } from 'typeorm';
 import { StatusCodes } from 'http-status-codes';
 import { ResponseHandler } from '../../helper/ResponseHandler';
 import { Request, Response } from 'express';
-import * as classValidator from "class-validator";
-import * as classTransformer from "class-transformer";
-import { mock } from "jest-mock-extended";
+import * as classValidator from 'class-validator';
+import * as classTransformer from 'class-transformer';
+import { mock } from 'jest-mock-extended';
 import { ErrorMessages } from '../../constants/ErrorMessages';
 
 jest.mock('../../helper/ResponseHandler');
@@ -17,8 +18,8 @@ jest.mock('class-validator', () => ({
   validate: jest.fn(),
 }));
 
-jest.mock("class-transformer", () => ({
-  ...jest.requireActual("class-transformer"),
+jest.mock('class-transformer', () => ({
+  ...jest.requireActual('class-transformer'),
   instanceToPlain: jest.fn(),
 }));
 
@@ -64,11 +65,21 @@ describe('UserController', () => {
 
   let userController: UserController;
   let mockUserRepository: jest.Mocked<Repository<User>>;
+  let mockLeaveTypeRepository: jest.Mocked<Repository<LeaveType>>;
 
   beforeEach(() => {
     mockUserRepository = mock<Repository<User>>();
+    mockLeaveTypeRepository = mock<Repository<LeaveType>>();
     userController = new UserController();
     userController['userRepository'] = mockUserRepository;
+
+    jest
+      .spyOn(require('../../data-source').AppDataSource, 'getRepository')
+      .mockImplementation((entity: any) => {
+        if (entity === User) return mockUserRepository;
+        if (entity === LeaveType) return mockLeaveTypeRepository;
+        throw new Error('Unknown repository mock');
+      });
   });
 
   afterEach(() => {
@@ -98,21 +109,23 @@ describe('UserController', () => {
     expect(ResponseHandler.sendSuccessResponse).toHaveBeenCalledWith(res, [], StatusCodes.NO_CONTENT);
   });
 
-it('create returns BAD_REQUEST if no password', async () => {
-  const req = mockRequest({}, { email: 'email@test.com', roleId: 1 });
-  const res = mockResponse();
+  it('create returns BAD_REQUEST if no password', async () => {
+    const req = mockRequest({}, { email: 'email@test.com', roleId: 1 });
+    const res = mockResponse();
 
-  const error = 'Password must be at least 10 characters long';
-  jest.spyOn(classValidator, 'validate').mockResolvedValue([
-    { constraints: { MinLength: error } } as any,
-  ]);
+    mockLeaveTypeRepository.findOne.mockResolvedValue({ name: 'Annual Leave', defaultBalance: 25 } as LeaveType);
 
-  try {
-    await userController.create(req as Request, res as Response);
-  } catch (err: any) {
-    expect(err.message).toBe(error);
-  }
-});
+    const error = 'Password must be at least 10 characters long';
+    jest.spyOn(classValidator, 'validate').mockResolvedValue([
+      { constraints: { MinLength: error } } as any,
+    ]);
+
+    try {
+      await userController.create(req as Request, res as Response);
+    } catch (err: any) {
+      expect(err.message).toBe(error);
+    }
+  });
 
   it('create returns CREATED for valid user', async () => {
     const validUser = getValidManagerData();
@@ -126,46 +139,53 @@ it('create returns BAD_REQUEST if no password', async () => {
     });
     const res = mockResponse();
 
+    mockLeaveTypeRepository.findOne.mockResolvedValue({ name: 'Annual Leave', defaultBalance: 25 } as LeaveType);
     mockUserRepository.save.mockResolvedValue(validUser);
     jest.spyOn(classTransformer, 'instanceToPlain').mockReturnValue({
-    id: validUser.id,
-    email: validUser.email,
-    firstName: validUser.firstName,
-    lastName: validUser.lastName,
-    department: validUser.department,
-    role: {
+      id: validUser.id,
+      email: validUser.email,
+      firstName: validUser.firstName,
+      lastName: validUser.lastName,
+      department: validUser.department,
+      role: {
         id: validUser.role.id,
         name: validUser.role.name,
-    },} as any);
-
+      },
+    } as any);
     jest.spyOn(classValidator, 'validate').mockResolvedValue([]);
 
     await userController.create(req as Request, res as Response);
 
-    expect(ResponseHandler.sendSuccessResponse).toHaveBeenCalledWith(res, {
-    id: validUser.id,
-    email: validUser.email,
-    firstName: validUser.firstName,
-    lastName: validUser.lastName,
-    department: validUser.department,
-    role: {id: validUser.role.id, name: validUser.role.name,},}, 
-    StatusCodes.CREATED);
-    });
+    expect(ResponseHandler.sendSuccessResponse).toHaveBeenCalledWith(
+      res,
+      {
+        id: validUser.id,
+        email: validUser.email,
+        firstName: validUser.firstName,
+        lastName: validUser.lastName,
+        department: validUser.department,
+        role: {
+          id: validUser.role.id,
+          name: validUser.role.name,
+        },
+      },
+      StatusCodes.CREATED
+    );
+  });
 
-    it('create throws CONFLICT if email already exists', async () => {
+  it('create throws CONFLICT if email already exists', async () => {
     const validUser = getValidManagerData();
-
     const req = mockRequest({}, {
       email: validUser.email,
       password: validUser.password,
       roleId: validUser.role.id,
       firstName: validUser.firstName,
       lastName: validUser.lastName,
-      department: validUser.department
+      department: validUser.department,
     });
     const res = mockResponse();
 
-    // Simulate a user already existing with that email
+    mockLeaveTypeRepository.findOne.mockResolvedValue({ name: 'Annual Leave', defaultBalance: 25 } as LeaveType);
     mockUserRepository.findOne.mockResolvedValue(validUser);
 
     try {
@@ -229,28 +249,29 @@ it('create returns BAD_REQUEST if no password', async () => {
     expect(ResponseHandler.sendSuccessResponse).toHaveBeenCalledWith(res, user);
   });
 
-it('update returns BAD_REQUEST if no ID provided', async () => {
-  const req = mockRequest(); // no ID in body or params
-  const res = mockResponse();
+  it('update returns BAD_REQUEST if no ID provided', async () => {
+    const req = mockRequest(); // no ID in body or params
+    const res = mockResponse();
 
-  try {
-    await userController.update(req as Request, res as Response);
-  } catch (err: any) {
-    expect(err.message).toBe(ErrorMessages.NO_USER_ID_PROVIDED);
-  }
-});
-it('delete returns NOT_FOUND if user not found', async () => {
-  const req = mockRequest({ id: '999' });
-  const res = mockResponse();
+    try {
+      await userController.update(req as Request, res as Response);
+    } catch (err: any) {
+      expect(err.message).toBe(ErrorMessages.NO_USER_ID_PROVIDED);
+    }
+  });
 
-  mockUserRepository.delete.mockResolvedValue({ affected: 0 } as any);
+  it('delete returns NOT_FOUND if user not found', async () => {
+    const req = mockRequest({ id: '999' });
+    const res = mockResponse();
 
-  try {
-    await userController.delete(req as Request, res as Response);
-  } catch (err: any) {
-    expect(err.message).toBe(ErrorMessages.USER_NOT_FOUND_FOR_DELETION);
-  }
-});
+    mockUserRepository.delete.mockResolvedValue({ affected: 0 } as any);
+
+    try {
+      await userController.delete(req as Request, res as Response);
+    } catch (err: any) {
+      expect(err.message).toBe(ErrorMessages.USER_NOT_FOUND_FOR_DELETION);
+    }
+  });
 
   it('delete returns OK if deletion succeeds', async () => {
     const req = mockRequest({ id: '1' });
