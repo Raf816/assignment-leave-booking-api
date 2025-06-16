@@ -63,18 +63,8 @@ export class LeaveRequestRouter implements IRouter {
       MiddlewareFactory.logRouteAccess(this.basePath),
       this.leaveRequestController.cancelLeave
     );
-    
-    // ADMIN/MANAGER: View all leave requests (optionally filtered by userId/status)
-    // this.router.get(
-    //   "/all",
-    //   MiddlewareFactory.authenticateToken,
-    //   MiddlewareFactory.requireRole(["admin", "manager"]),
-    //   MiddlewareFactory.jwtRateLimitMiddleware(this.basePath),
-    //   MiddlewareFactory.logRouteAccess(this.basePath),
-    //   this.leaveRequestController.getAllLeaveRequests
-    // );
 
-    // STAFF/MANAGER/ADMIN: View leave requests (staff see their own, others see team/company)
+    // STAFF/MANAGER/ADMIN: View leave requests (staff see their own, managers see assigned, admin see all)
     this.router.get(
       "/all",
       MiddlewareFactory.authenticateToken, 

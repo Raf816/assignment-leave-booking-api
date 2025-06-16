@@ -154,7 +154,7 @@ describe('LeaveRequestController', () => {
       body: {
         startDate: '2025-08-01',
         endDate: '2025-08-05',
-        leaveType: undefined // 👈 force validation error
+        leaveType: undefined // force validation error
       },
     });
     const res = mockResponse();
@@ -413,7 +413,7 @@ it('approveLeave: returns BAD_REQUEST if insufficient balance', async () => {
 
 
 
-  // ✅ getMyRequests: success
+  // getMyRequests: success
   it('getMyRequests: returns leave requests for user', async () => {
     const req = mockRequest({ signedInUser: { email: 'staff@abc.com' } });
     const res = mockResponse();
@@ -426,7 +426,7 @@ it('approveLeave: returns BAD_REQUEST if insufficient balance', async () => {
     expect(ResponseHandler.sendSuccessResponse).toHaveBeenCalledWith(res, requests, StatusCodes.OK);
   });
 
-  // ✅ approveLeave: success
+  // approveLeave: success
   it('approveLeave: approves leave request and deducts balance', async () => {
     const user = new User();
     user.id = 1;
@@ -456,7 +456,7 @@ it('approveLeave: returns BAD_REQUEST if insufficient balance', async () => {
     expect(ResponseHandler.sendSuccessResponse).toHaveBeenCalled();
   });
 
-  // ✅ rejectLeave: success
+  // rejectLeave: success
   it('rejectLeave: rejects a pending leave request with reason', async () => {
     const user = new User();
     user.id = 1;
@@ -483,7 +483,7 @@ it('approveLeave: returns BAD_REQUEST if insufficient balance', async () => {
     expect(ResponseHandler.sendSuccessResponse).toHaveBeenCalled();
   });
 
-  // ✅ updateLeaveBalance: success
+  // updateLeaveBalance: success
   it('updateLeaveBalance: updates leave balance successfully', async () => {
     const user = new User();
     user.id = 5;
@@ -517,7 +517,7 @@ it('approveLeave: returns BAD_REQUEST if insufficient balance', async () => {
     );
   });
 
-  // ✅ getRemainingLeave: success for self
+  // getRemainingLeave: success for self
   it('getRemainingLeave: returns balance for self', async () => {
     const user = new User();
     user.id = 10;
@@ -585,7 +585,7 @@ it('approveLeave: returns BAD_REQUEST if insufficient balance', async () => {
   });
 
 
-  // ✅ getPendingRequests: admin sees all
+  // getPendingRequests: admin sees all
   it('getPendingRequests: admin sees all pending leave requests', async () => {
     const admin = new User();
     admin.id = 1;
@@ -609,7 +609,7 @@ it('approveLeave: returns BAD_REQUEST if insufficient balance', async () => {
     );
   });
 
-  // ✅ getPendingRequests: forbidden for regular users
+  // getPendingRequests: forbidden for regular users
   it('getPendingRequests: denies access for non-admin/manager roles', async () => {
     const user = new User();
     user.id = 3;

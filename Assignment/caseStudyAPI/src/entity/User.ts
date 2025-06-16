@@ -9,21 +9,7 @@ import { UserManagement } from "./UserManagement";
 export class User {
     @PrimaryGeneratedColumn()
     id: number
-
-    // @Column({ select: false }) //obscure from get queries
-    // @Exclude() //after post queries - need instanceToPlain when responding
-    // @IsString()
-    // @MinLength(10, { message: 'Password must be at least 10 characters long' })
-    // password1: string
-
-    // @IsString({ message: "Password must be a string" })
-    // @MinLength(10, { message: 'Password must be at least 10 characters long' })
-    // @IsNotEmpty({ message: 'Password is required' })
-    // @Column({ select: false }) //obscure from get queries
-    // @Exclude() //after post queries - need instanceToPlain when responding
-    // password1: string;
-
-    //Working
+    
     @IsOptional({ groups: ['update'] })
     @Column({ select: false }) //obscure from get queries
     @Exclude() //after post queries - need instanceToPlain when responding

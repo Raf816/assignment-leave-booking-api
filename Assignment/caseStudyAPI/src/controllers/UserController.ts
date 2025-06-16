@@ -167,27 +167,6 @@ export class UserController implements IEntityController {
       user.password = hashedPassword;
       user.salt = salt;
     }
-
-
-    //working beelow line 129-142 (without validation of new password)
-    // if (req.body.password && req.body.password.trim().length > 0) {
-    //   user.password = req.body.password; // assign raw password for validation
-    // }
-
-    // const errors = await validate(user, { groups: ['update'] });
-    // if (errors.length > 0) {
-    //   const errorMessages = errors.map(err => Object.values(err.constraints || {})).flat().join(", ");
-    //   throw new AppError(errorMessages);
-    // }
-
-    // if (req.body.password && req.body.password.trim().length > 0) {
-    //   const { hashedPassword, salt } = PasswordHandler.hashPassword(req.body.password);
-    //   user.password = hashedPassword;
-    //   user.salt = salt;
-    // }
-
-    // await ValidationUtil.validateOrThrow(user, ['update']);
-
     user = await this.userRepository.save(user);
     ResponseHandler.sendSuccessResponse(res, instanceToPlain(user), StatusCodes.OK);
   };

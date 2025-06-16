@@ -31,15 +31,4 @@ export class UserManagement {
   @IsOptional()
   @IsDateString({ strict: true }, { message: "End date must be a valid date (YYYY-MM-DD)" })
   endDate: string | null;
-
-
-  // @Column({ type: 'datetime', nullable: true })
-  // @IsDate({ message: "Start date must be a valid date" })
-  // @IsNotEmpty({ message: "Start date is required" })
-  // startDate: Date | null;
-
-  // @Column({ nullable: true })
-  // @IsOptional()
-  // @IsDate({ message: "End date must be a valid date" })
-  // endDate: Date | null;
 }

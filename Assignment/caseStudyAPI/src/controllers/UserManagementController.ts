@@ -59,14 +59,6 @@ export class UserManagementController implements IUserManagementController {
         startDate,
       });
 
-      
-      //using date object below
-      // const mapping = userManagementRepo.create({
-      //   staff,
-      //   manager,
-      //   startDate: startDate ? new Date(startDate) : new Date()
-      // });
-
       await ValidationUtil.validateOrThrow(mapping);
 
       await userManagementRepo.save(mapping);
